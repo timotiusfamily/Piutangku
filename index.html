@@ -470,7 +470,6 @@
       const from = new Date(fromDate);
       const to = new Date(toDate);
       
-      // Validate dates
       if (isNaN(from.getTime()) || isNaN(to.getTime()) || to < from) return 0;
 
       const diffTime = to.getTime() - from.getTime();
@@ -643,6 +642,7 @@
       const start = $('#rep-start').value;
       const end = $('#rep-end').value;
       let reportText = '';
+      let reportData = [];
 
       if (customer) {
         const loan = allLoans.find(l => l.name === customer);
@@ -665,6 +665,7 @@
               totalPaid += p.amount;
               totalInterest += p.interestPaid;
               totalPrincipal += p.principalPaid;
+              reportData.push([p.date, `Rp${fmt(p.amount)}`, `Rp${fmt(p.principalPaid)}`, `Rp${fmt(p.interestPaid)}`, p.note || '-']);
             });
             reportText += `\nTotal Bayar: Rp${fmt(totalPaid)}\n`;
             reportText += `Total Bunga: Rp${fmt(totalInterest)}\n`;
@@ -701,6 +702,11 @@
 
       $('#report-output').textContent = reportText;
       $('#report-output').classList.remove('hidden');
+
+      window.reportData = reportData;
+      window.reportTitle = `Laporan Piutang ${customer ? `Customer ${customer}` : 'Semua Customer'}`;
+      window.reportPeriod = `Periode: ${start} s/d ${end}`;
+      window.reportSummary = reportText.split('\n').filter(line => line.includes('Total') || line.includes('Sisa Pokok'));
     });
 
     $('#btn-share-wa').addEventListener('click', () => {
@@ -716,27 +722,52 @@
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         
-        const reportText = $('#report-output').textContent;
-        if (reportText.trim() === '' || reportText.trim() === 'Customer tidak ditemukan.') {
-            alert('Buat laporan dulu!');
-            return;
-        }
+        const customer = $('#rep-customer').value;
+        const loan = customer ? allLoans.find(l => l.name === customer) : null;
+        const start = $('#rep-start').value;
+        const end = $('#rep-end').value;
 
-        const lines = reportText.split('\n');
-        let y = 10;
-        const margin = 10;
-        const lineHeight = 7;
-        
+        doc.setFontSize(18);
+        doc.text("Laporan Piutang", 14, 20);
         doc.setFontSize(12);
+        doc.text(`Periode: ${start} s/d ${end}`, 14, 28);
         
-        lines.forEach(line => {
-            if (y > doc.internal.pageSize.height - margin) {
-                doc.addPage();
-                y = 10;
+        let y = 35;
+        if (loan) {
+            doc.text(`Customer: ${loan.name}`, 14, y);
+            y += 7;
+            doc.text(`Kontak: ${loan.contact || '-'}`, 14, y);
+            y += 7;
+            doc.text(`Pokok Awal: Rp${fmt(loan.principal)}`, 14, y);
+            y += 7;
+            doc.text(`Sisa Pokok: Rp${fmt(loan.outstanding)}`, 14, y);
+            y += 15;
+            
+            const payments = loan.payments.filter(p => p.date >= start && p.date <= end);
+            if (payments.length > 0) {
+              const tableColumn = ["Tanggal", "Nominal", "Pokok", "Bunga", "Catatan"];
+              const tableRows = payments.map(p => [
+                  p.date,
+                  `Rp${fmt(p.amount)}`,
+                  `Rp${fmt(p.principalPaid)}`,
+                  `Rp${fmt(p.interestPaid)}`,
+                  p.note || '-'
+              ]);
+
+              doc.autoTable(tableColumn, tableRows, { startY: y, headStyles: { fillColor: [37, 99, 235] }});
+            } else {
+              doc.text("Tidak ada pembayaran dalam periode ini.", 14, y);
             }
-            doc.text(line, margin, y);
-            y += lineHeight;
-        });
+        } else {
+            const summary = $('#report-output').textContent.split('\n');
+            summary.forEach(line => {
+                if (line.includes('Total') || line.includes('Sisa')) {
+                    doc.text(line, 14, y);
+                    y += 7;
+                }
+            });
+            doc.text("Untuk rincian lengkap, silakan pilih satu customer.", 14, y + 10);
+        }
 
         doc.save("Laporan-Piutang.pdf");
     });
