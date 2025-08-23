@@ -53,7 +53,7 @@
     }
     .logo {
       width: 95px;
-      height: 68px;
+      height: 58px;
       border-radius: 12px;
       background-size: cover;
       background-position: center;
@@ -69,17 +69,34 @@
     /* Tab Bar di bawah header */
     .tab-bar {
       display: flex;
-      justify-content: center;
       background: #fff;
       border-bottom: 1px solid var(--border);
       padding: 8px 16px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
       overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+      scrollbar-color: var(--primary) #f1f5f9;
     }
+
+    .tab-bar::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    .tab-bar::-webkit-scrollbar-thumb {
+      background: var(--primary);
+      border-radius: 4px;
+    }
+
+    .tab-bar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+
     .tabs {
-      display: flex;
-      gap: 5px;
-      margin: 0;
+      display: inline-flex;
+      gap: 8px;
+      margin: 0 auto;
+      padding: 0 8px;
     }
     .tab {
       padding: 10px 16px;
@@ -91,6 +108,7 @@
       white-space: nowrap;
       transition: all 0.2s ease;
       border: 2px solid transparent;
+      flex-shrink: 0;
     }
     .tab:hover { background: #e0e7ff; }
     .tab.active { color: #fff; background: var(--primary); border-color: var(--primary); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
@@ -118,14 +136,12 @@
     .btn.warn { background: var(--warn); color: #fff; border-color: var(--warn); }
     .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
 
-    /* Dashboard */
     .stats { display: grid; gap: 12px; grid-template-columns: 1fr; }
     @media (min-width: 720px) { .stats { grid-template-columns: repeat(4,1fr); } }
     .stat-card { padding: 16px; border-radius: 10px; border: 1px solid var(--border); text-align: center; }
     .stat-card h3 { margin: 0 0 4px; font-size: 14px; color: var(--muted); }
     .stat-card .value { font-size: 20px; font-weight: 700; color: var(--primary); }
 
-    /* Table */
     table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
     th, td { text-align: left; padding: 10px; }
     tr { background: #fff; border: 1px solid var(--border); vertical-align: top; }
@@ -252,7 +268,7 @@
           </div>
           <div style="margin-top:16px" class="stack">
             <button class="btn success" id="btn-pay">Catat Pembayaran</button>
-            <div id="p-breakdown" class="muted small"></div>
+            <pre id="p-breakdown" class="small muted hidden" style="background: #f8fafc; padding: 12px; border-radius: 8px;"></pre>
           </div>
         </div>
       </section>
@@ -408,12 +424,18 @@
         Object.values(views).forEach(v => v.hidden = true);
         views[t.dataset.tab].hidden = false;
         
+        // Scroll active tab into view
+        t.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+
         if (t.dataset.tab === 'pay') refreshLoanOptions();
+        if (t.dataset.tab === 'rates') refreshLoanOptions();
         if (t.dataset.tab === 'reports') refreshCustomerOptions();
       }));
 
       // Tampilkan dashboard awal
       views.dashboard.hidden = false;
+      tabs.find(t => t.dataset.tab === 'dashboard').classList.add('active');
+      tabs.find(t => t.dataset.tab === 'dashboard').scrollIntoView({ behavior: 'smooth', inline: 'center' });
 
       // Isi tanggal default
       $('#c-start').value = $('#p-date').value = $('#r-date').value = todayStr();
@@ -451,10 +473,14 @@
 
     // ===== PERBAIKAN FUNGSI BUNGA DAN TENOR =====
     function calcInterestDue(loan, fromDate, toDate) {
-      if (loan.outstanding <= 0) return 0;
+      if (!loan || loan.outstanding <= 0 || !fromDate || !toDate) return 0;
 
       const from = new Date(fromDate);
       const to = new Date(toDate);
+      
+      // Validate dates
+      if (isNaN(from.getTime()) || isNaN(to.getTime()) || to < from) return 0;
+
       const diffTime = to.getTime() - from.getTime();
       const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
@@ -463,13 +489,13 @@
 
       let dailyRate;
       if (loan.period === 'daily') {
-        dailyRate = rate / 100; // Bunga harian langsung
+        dailyRate = rate / 100;
       } else {
-        dailyRate = (rate / 100) / 30; // Bunga bulanan → /30
+        dailyRate = (rate / 100) / 30;
       }
 
       const interest = loan.outstanding * dailyRate * diffDays;
-      return Math.round(interest * 100) / 100; // 2 desimal
+      return Math.round(interest * 100) / 100;
     }
 
     function rateAt(loan, date) {
@@ -544,14 +570,29 @@
       const newStatus = newOutstanding <= 0 ? 'lunas' : 'active';
 
       await addDoc(collection(db, 'loans', loanId, 'payments'), {
-        date, amount, interestPaid, principalPaid, note, createdAt: serverTimestamp()
+        date,
+        amount: Number(amount),
+        interestPaid,
+        principalPaid,
+        note,
+        createdAt: serverTimestamp()
       });
 
       await updateDoc(loanRef, { outstanding: newOutstanding, status: newStatus });
+
+      const breakdown = `
+        Bunga Terutang: Rp${fmt(interestAccrued)}
+        Bunga Dibayar: Rp${fmt(interestPaid)}
+        Pokok Dibayar: Rp${fmt(principalPaid)}
+        Sisa Pokok: Rp${fmt(newOutstanding)}
+        Status: ${newStatus}
+      `;
+      $('#p-breakdown').textContent = breakdown;
+      $('#p-breakdown').classList.remove('hidden');
+
       alert(`Pembayaran berhasil. Bunga: Rp${fmt(interestPaid)}, Pokok: Rp${fmt(principalPaid)}`);
     }
 
-    // ===== UI FUNCTIONS =====
     function refreshLoanOptions() {
       const opts = allLoans.map(l => `<option value="${l.id}">${l.name} — Rp${fmt(l.outstanding)}</option>`).join('');
       $('#p-loan').innerHTML = '<option value="">— pilih —</option>' + opts;
@@ -602,51 +643,70 @@
       $('#loan-rows').innerHTML = rows || '<tr><td colspan="7">Tidak ada data</td></tr>';
     }
 
-    // ===== REPORTS =====
     $('#btn-generate-report').addEventListener('click', () => {
       const customer = $('#rep-customer').value;
       const start = $('#rep-start').value;
       const end = $('#rep-end').value;
-      let report = `LAPORAN PIUTANG\n`;
+      let report = `LAPORAN PIUTANG\nPeriode: ${start} s/d ${end}\n\n`;
 
       if (customer) {
         const loan = allLoans.find(l => l.name === customer);
-        if (!loan) return;
-        report += `Customer: ${loan.name}\n\n`;
+        if (!loan) {
+          $('#report-output').textContent = 'Customer tidak ditemukan.';
+          $('#report-output').classList.remove('hidden');
+          return;
+        }
+        report += `Customer: ${loan.name}\n`;
+        report += `Kontak: ${loan.contact || '-'}\n`;
         report += `Pokok Awal: Rp${fmt(loan.principal)}\n`;
-        report += `Sisa Pokok: Rp${fmt(loan.outstanding)}\n\n`;
+        report += `Sisa Pokok: Rp${fmt(loan.outstanding)}\n`;
+        report += `Status: ${loan.status === 'lunas' ? 'Lunas' : 'Aktif'}\n\n`;
 
         const payments = loan.payments.filter(p => p.date >= start && p.date <= end);
         if (payments.length) {
+          report += `Pembayaran:\n`;
+          let totalPaid = 0, totalInterest = 0, totalPrincipal = 0;
           payments.forEach(p => {
-            report += `Tanggal: ${p.date}\n`;
-            report += `Bayar: Rp${fmt(p.amount)} (Bunga: Rp${fmt(p.interestPaid)}, Pokok: Rp${fmt(p.principalPaid)})\n\n`;
+            report += `- ${p.date}: Rp${fmt(p.amount)} (Bunga: Rp${fmt(p.interestPaid)}, Pokok: Rp${fmt(p.principalPaid)}) ${p.note ? `(${p.note})` : ''}\n`;
+            totalPaid += p.amount;
+            totalInterest += p.interestPaid;
+            totalPrincipal += p.principalPaid;
           });
+          report += `\nTotal Bayar: Rp${fmt(totalPaid)}\n`;
+          report += `Total Bunga: Rp${fmt(totalInterest)}\n`;
+          report += `Total Pokok: Rp${fmt(totalPrincipal)}\n`;
         } else {
           report += `Tidak ada pembayaran dalam periode ini.\n`;
         }
       } else {
-        report += `Periode: ${start} s/d ${end}\n\n`;
-        let total = 0, paid = 0, interest = 0;
+        let totalPrincipal = 0, totalPaid = 0, totalInterest = 0, totalOutstanding = 0;
         allLoans.forEach(l => {
-          const p = l.payments.filter(p => p.date >= start && p.date <= end);
-          const sum = p.reduce((s,x)=>s+x.amount,0);
-          const int = p.reduce((s,x)=>s+x.interestPaid,0);
-          report += `${l.name}: Rp${fmt(sum)} (Bunga: Rp${fmt(int)})\n`;
-          total += l.principal;
-          paid += sum;
-          interest += int;
+          const payments = l.payments.filter(p => p.date >= start && p.date <= end);
+          const sum = payments.reduce((s, x) => s + x.amount, 0);
+          const int = payments.reduce((s, x) => s + x.interestPaid, 0);
+          const prin = payments.reduce((s, x) => s + x.principalPaid, 0);
+          if (sum > 0 || l.outstanding > 0) {
+            report += `${l.name}:\n`;
+            report += `  Pokok Awal: Rp${fmt(l.principal)}\n`;
+            report += `  Sisa Pokok: Rp${fmt(l.outstanding)}\n`;
+            report += `  Bayar: Rp${fmt(sum)} (Bunga: Rp${fmt(int)}, Pokok: Rp${fmt(prin)})\n\n`;
+          }
+          totalPrincipal += l.principal;
+          totalPaid += sum;
+          totalInterest += int;
+          totalOutstanding += l.outstanding;
         });
-        report += `\nTotal Pokok: Rp${fmt(total)}\n`;
-        report += `Total Bayar: Rp${fmt(paid)}\n`;
-        report += `Total Bunga: Rp${fmt(interest)}`;
+        report += `Ringkasan:\n`;
+        report += `Total Pokok Awal: Rp${fmt(totalPrincipal)}\n`;
+        report += `Total Sisa Pokok: Rp${fmt(totalOutstanding)}\n`;
+        report += `Total Bayar: Rp${fmt(totalPaid)}\n`;
+        report += `Total Bunga: Rp${fmt(totalInterest)}\n`;
       }
 
       $('#report-output').textContent = report;
       $('#report-output').classList.remove('hidden');
     });
 
-    // ===== GLOBAL FUNCTIONS =====
     window.editLoan = async function(id) {
       const loan = allLoans.find(l => l.id === id);
       if (!loan) return;
@@ -680,7 +740,6 @@
       }
     };
 
-    // ===== EVENT LISTENERS =====
     $('#btn-create').onclick = () => {
       const name = $('#c-name').value;
       const principal = $('#c-principal').value;
@@ -716,7 +775,6 @@
       alert('Bunga diubah');
     };
 
-    // ===== PWA Support =====
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
