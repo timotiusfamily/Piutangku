@@ -450,18 +450,29 @@
     }
 
     async function addPayment(loanId, {date, amount, note, type}) {
-      const loan = allLoans.find(l => l.id === loanId);
+      const loanRef = doc(db, 'loans', loanId);
+      const loanSnap = await getDoc(loanRef);
+      const loan = loanSnap.data();
+
       if (!loan) {
         alert("Pinjaman tidak ditemukan.");
         return;
       }
-      
-      const lastPaymentDate = loan.payments.length > 0 ? loan.payments[loan.payments.length - 1].date : loan.start;
+
+      const paymentsSnap = await getDocs(collection(db, 'loans', loanId, 'payments'));
+      const payments = paymentsSnap.docs.map(p => p.data());
+      const lastPaymentDate = payments.length > 0 ? payments[payments.length - 1].date : loan.start;
+
       const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
       let interestPaid = 0;
       let principalPaid = 0;
       let paymentAmount = Number(amount);
-
+      
+      if (paymentAmount <= 0) {
+        alert("Nominal pembayaran harus lebih dari 0.");
+        return;
+      }
+      
       if (type === 'interest' || type === 'both') {
           interestPaid = Math.min(paymentAmount, interestAccrued);
           paymentAmount -= interestPaid;
@@ -483,7 +494,7 @@
           createdAt: serverTimestamp()
       });
 
-      await updateDoc(doc(db, 'loans', loanId), {
+      await updateDoc(loanRef, {
           outstanding: newOutstanding,
           status: newStatus
       });
