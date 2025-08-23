@@ -13,6 +13,7 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
+    /* Styles tetap sama seperti sebelumnya */
     :root {
       --bg: #ffffff;
       --text: #0f172a;
@@ -123,8 +124,8 @@
       <form id="login-form">
         <div class="grid">
           <div>
-            <label>User ID</label>
-            <input type="text" id="login-id" placeholder="Masukkan ID" required />
+            <label>Email</label>
+            <input type="email" id="login-email" placeholder="Masukkan email" required />
           </div>
           <div>
             <label>Password</label>
@@ -133,6 +134,38 @@
         </div>
         <button type="submit" class="btn primary">Masuk</button>
       </form>
+      <p style="margin-top: 16px; font-size: 14px;">
+        Belum punya akun? <a href="#" id="register-link">Daftar di sini</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- REGISTER SCREEN (Tersembunyi) -->
+  <div class="login-screen hidden" id="register-screen">
+    <div class="login-card">
+      <div class="login-logo"></div>
+      <h2 class="login-title">Daftar Akun</h2>
+      <p>Buat akun baru untuk mengelola piutang</p>
+      <form id="register-form">
+        <div class="grid">
+          <div>
+            <label>Email</label>
+            <input type="email" id="register-email" placeholder="Masukkan email" required />
+          </div>
+          <div>
+            <label>Password</label>
+            <input type="password" id="register-password" placeholder="Buat password (min. 6 karakter)" required />
+          </div>
+          <div>
+            <label>Konfirmasi Password</label>
+            <input type="password" id="register-confirm" placeholder="Konfirmasi password" required />
+          </div>
+        </div>
+        <button type="submit" class="btn primary">Daftar</button>
+      </form>
+      <p style="margin-top: 16px; font-size: 14px;">
+        Sudah punya akun? <a href="#" id="login-link">Masuk di sini</a>
+      </p>
     </div>
   </div>
 
@@ -296,20 +329,28 @@
   <!-- Firebase & App Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { 
+      getAuth, 
+      signInWithEmailAndPassword, 
+      createUserWithEmailAndPassword, 
+      signOut,
+      onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import {
       getFirestore, collection, addDoc, doc, getDoc, getDocs, onSnapshot,
       query, orderBy, updateDoc, where, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    /const firebaseConfig = {
-  apiKey: "AIzaSyDciVnOKpAtRnXdEr-kGPm1tEhStVJw28U",
-  authDomain: "piutangku-bfa1a.firebaseapp.com",
-  projectId: "piutangku-bfa1a",
-  storageBucket: "piutangku-bfa1a.firebasestorage.app",
-  messagingSenderId: "238252334346",
-  appId: "1:238252334346:web:83ff60aaa7eedb1335eef3"
-};
+    // Konfigurasi Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyDciVnOKpAtRnXdEr-kGPm1tEhStVJw28U",
+      authDomain: "piutangku-bfa1a.firebaseapp.com",
+      projectId: "piutangku-bfa1a",
+      storageBucket: "piutangku-bfa1a.firebasestorage.app",
+      messagingSenderId: "238252334346",
+      appId: "1:238252334346:web:83ff60aaa7eedb1335eef3"
+    };
+    
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -324,33 +365,84 @@
     const fmt = n => Number(n||0).toLocaleString('id-ID');
     function waLink(number, text){ return `https://wa.me/${number}?text=${encodeURIComponent(text)}`; }
 
-    // ===== LOGIN SYSTEM =====
+    // ===== AUTH SYSTEM =====
+    // Toggle antara login dan register
+    $('#register-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      $('#login-screen').classList.add('hidden');
+      $('#register-screen').classList.remove('hidden');
+    });
+
+    $('#login-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      $('#register-screen').classList.add('hidden');
+      $('#login-screen').classList.remove('hidden');
+    });
+
+    // Login dengan email dan password
     $('#login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const userId = $('#login-id').value.trim();
+      const email = $('#login-email').value.trim();
       const password = $('#login-password').value;
 
       try {
-        const q = query(collection(db, 'users'), where('id', '==', userId));
-        const snap = await getDocs(q);
-        if (!snap.empty && snap.docs[0].data().password === password) {
-          $('#login-screen').classList.add('hidden');
-          $('#main-app').classList.remove('hidden');
-          initApp();
-        } else {
-          alert('User ID atau password salah.');
-        }
-      } catch (err) {
-        alert('Gagal login: ' + err.message);
+        await signInWithEmailAndPassword(auth, email, password);
+        // Login berhasil, akan di-handle oleh onAuthStateChanged
+      } catch (error) {
+        alert('Login gagal: ' + error.message);
       }
     });
 
-    $('#btn-logout').addEventListener('click', () => {
+    // Register dengan email dan password
+    $('#register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = $('#register-email').value.trim();
+      const password = $('#register-password').value;
+      const confirmPassword = $('#register-confirm').value;
+
+      if (password !== confirmPassword) {
+        alert('Konfirmasi password tidak sesuai');
+        return;
+      }
+
+      if (password.length < 6) {
+        alert('Password minimal 6 karakter');
+        return;
+      }
+
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        alert('Akun berhasil dibuat. Silakan login.');
+        $('#register-screen').classList.add('hidden');
+        $('#login-screen').classList.remove('hidden');
+      } catch (error) {
+        alert('Pendaftaran gagal: ' + error.message);
+      }
+    });
+
+    // Logout
+    $('#btn-logout').addEventListener('click', async () => {
       if (confirm('Yakin ingin keluar?')) {
+        try {
+          await signOut(auth);
+        } catch (error) {
+          console.error('Error signing out:', error);
+        }
+      }
+    });
+
+    // Monitor status autentikasi
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // User berhasil login
+        $('#login-screen').classList.add('hidden');
+        $('#register-screen').classList.add('hidden');
+        $('#main-app').classList.remove('hidden');
+        initApp();
+      } else {
+        // User logout
         $('#main-app').classList.add('hidden');
         $('#login-screen').classList.remove('hidden');
-        $('#login-id').value = '';
-        $('#login-password').value = '';
       }
     });
 
@@ -400,7 +492,8 @@
       const snap = await getDocs(collection(db, 'loans'));
       const loans = await Promise.all(snap.docs.map(async d => {
         const data = { id: d.id, ...d.data() };
-        data.payments = (await getDocs(collection(db, 'loans', d.id, 'payments'))).docs.map(p => p.data());
+        const paymentsSnap = await getDocs(collection(db, 'loans', d.id, 'payments'));
+        data.payments = paymentsSnap.docs.map(p => p.data());
         return data;
       }));
 
@@ -438,8 +531,13 @@
     }
 
     async function addPayment(loanId, {date, amount, note, type}) {
-      const loan = (await getDoc(doc(db, 'loans', loanId))).data();
-      const lastPay = loan.payments?.length ? loan.payments[loan.payments.length-1].date : loan.start;
+      const loanSnap = await getDoc(doc(db, 'loans', loanId));
+      const loan = loanSnap.data();
+      
+      const paymentsSnap = await getDocs(collection(db, 'loans', loanId, 'payments'));
+      const payments = paymentsSnap.docs.map(p => p.data());
+      
+      const lastPay = payments.length ? payments[payments.length-1].date : loan.start;
       const interestDue = calcInterestDue(loan, lastPay, date);
       let interestPaid = 0, principalPaid = 0, remaining = Number(amount);
 
@@ -478,10 +576,9 @@
     }
 
     function rateAt(loan, date) {
-      const rates = (loan.rateHistory || []).sort((a,b) => new Date(a.date) - new Date(b.date));
-      let r = 0;
-      for (const rt of rates) if (new Date(rt.date) <= new Date(date)) r = rt.rate; else break;
-      return r;
+      // Implementasi ini memerlukan data rateHistory yang perlu diambil dari Firestore
+      // Untuk sementara, kita asumsikan rate tetap
+      return loan.rate || 0;
     }
 
     function nextDueDate(loan) {
@@ -558,7 +655,8 @@
     };
 
     window.sendWaReport = async (id) => {
-      const loan = (await getDocs(query(collection(db,'loans'), where('__name__', '==', id)))).docs[0].data();
+      const loanSnap = await getDoc(doc(db, 'loans', id));
+      const loan = loanSnap.data();
       const msg = `Laporan: ${loan.name}\nSisa: Rp${fmt(loan.outstanding)}\nJatuh Tempo: ${nextDueDate(loan)}`;
       window.open(waLink(loan.contact, msg), '_blank');
     };
@@ -583,7 +681,12 @@
 
       for (const l of loans) {
         if (customer && l.name !== customer) continue;
-        const p = l.payments?.filter(p => p.date >= start && p.date <= end).reduce((s,x)=>s+x.amount,0) || 0;
+        
+        // Ambil data pembayaran untuk periode tertentu
+        const paymentsSnap = await getDocs(collection(db, 'loans', l.id, 'payments'));
+        const payments = paymentsSnap.docs.map(p => p.data());
+        const p = payments.filter(p => p.date >= start && p.date <= end).reduce((s,x)=>s+x.amount,0) || 0;
+        
         report += `${l.name}: Rp${fmt(l.principal)} (Bayar: Rp${fmt(p)}, Sisa: Rp${fmt(l.outstanding)})\n`;
         total += l.principal;
         paid += p;
@@ -645,8 +748,7 @@
       alert('Bunga diubah');
     };
 
-    // ===== AUTH & PWA =====
-    onAuthStateChanged(auth, user => user || signInAnonymously(auth));
+    // ===== PWA =====
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
