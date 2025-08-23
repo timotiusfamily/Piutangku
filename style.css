@@ -1,0 +1,41 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+header {
+  display: flex;
+  align-items: center;
+  background: #1976d2;
+  color: white;
+  padding: 10px;
+}
+.logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  margin-right: 10px;
+}
+nav {
+  background: #eee;
+  padding: 10px;
+}
+nav button {
+  margin-right: 10px;
+}
+.tab {
+  display: none;
+  padding: 20px;
+}
+.tab.active {
+  display: block;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+table, th, td {
+  border: 1px solid #ccc;
+  padding: 8px;
+}
