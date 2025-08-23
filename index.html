@@ -437,9 +437,9 @@
       onSnapshot(collection(db, 'loans'), async (snap) => {
         allLoans = await Promise.all(snap.docs.map(async d => {
           const loanData = { id: d.id, ...d.data() };
-          const paymentsSnap = await getDocs(collection(db, 'loans', d.id, 'payments'));
+          const paymentsSnap = await getDocs(query(collection(db, 'loans', d.id, 'payments'), orderBy('date')));
           loanData.payments = paymentsSnap.docs.map(p => ({id: p.id, ...p.data()}));
-          const ratesSnap = await getDocs(collection(db, 'loans', d.id, 'rates'));
+          const ratesSnap = await getDocs(query(collection(db, 'loans', d.id, 'rates'), orderBy('date')));
           loanData.rateHistory = ratesSnap.docs.map(r => ({id: r.id, ...r.data()}));
           return loanData;
         }));
@@ -473,7 +473,7 @@
       if (isNaN(from.getTime()) || isNaN(to.getTime()) || to < from) return 0;
 
       const diffTime = to.getTime() - from.getTime();
-      const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+      const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
       const rate = rateAt(loan, fromDate);
       if (rate <= 0) return 0;
@@ -541,13 +541,10 @@
       const loanSnap = await getDoc(loanRef);
       if (!loanSnap.exists()) return alert("Pinjaman tidak ditemukan.");
 
-      const loan = loanSnap.data();
-      const payments = (await getDocs(collection(db, 'loans', loanId, 'payments'))).docs.map(p => p.data());
-      
-      // Determine the start date for interest calculation
-      const lastPaymentDate = payments.length > 0 ? payments[payments.length - 1].date : loan.start;
+      const loan = allLoans.find(l => l.id === loanId);
+      const sortedPayments = [...loan.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : loan.start;
 
-      // Calculate accrued interest from last payment date or loan start date
       const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
       let interestPaid = 0, principalPaid = 0;
       let remaining = Number(amount);
