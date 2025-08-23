@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Catatan Piutang</title>
+  <title>PiutangKu - Aplikasi Piutang</title>
 
-  <!-- PWA manifest -->
+  <!-- PWA Manifest -->
   <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#2563eb" />
 
@@ -26,282 +26,125 @@
       --shadow: 0 6px 24px rgba(2,6,23,.06);
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font: 500 15px/1.6 system-ui, Roboto, 'Segoe UI', Arial; }
 
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font: 500 15px/1.6 system-ui, Roboto, 'Segoe UI', Arial;
-    }
+    .app { max-width: 980px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+    .hidden { display: none !important; }
 
-    .app {
-      max-width: 980px;
-      margin: 0 auto;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+    /* Login Screen */
+    .login-screen {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 20px; background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
     }
+    .login-card {
+      width: 100%; max-width: 400px; background: #fff; border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow); text-align: center;
+    }
+    .login-logo {
+      width: 80px; height: 80px; margin: 0 auto 20px; background-image: url('./logo.png'); background-size: cover; background-position: center;
+      border-radius: 20px; border: 3px solid var(--primary);
+    }
+    .login-title { font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 16px; }
 
+    /* App Layout */
     header {
-      position: sticky;
-      top: 0;
-      background: #fff;
-      border-bottom: 1px solid var(--border);
-      z-index: 50;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      position: sticky; top: 0; background: #fff; border-bottom: 1px solid var(--border); z-index: 50; padding: 12px 16px;
+      display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
-
-    .logo {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background-size: cover;
-      background-position: center;
-      border: 2px solid var(--primary);
-    }
-
-    .brand {
-      font-weight: 800;
-      font-size: 1.2rem;
-      color: var(--primary);
-    }
-
-    .tabs {
-      display: flex;
-      gap: 8px;
-      margin-left: auto;
-      overflow-x: auto;
-      padding-bottom: 4px;
-    }
-
+    .logo { width: 48px; height: 48px; border-radius: 12px; background-size: cover; background-position: center; border: 2px solid var(--primary); }
+    .brand { font-weight: 800; font-size: 1.2rem; color: var(--primary); }
+    .tabs { display: flex; gap: 8px; margin-left: auto; overflow-x: auto; padding-bottom: 4px; }
     .tab {
-      padding: 10px 16px;
-      border-radius: 999px;
-      background: #f1f5f9;
-      color: var(--muted);
-      cursor: pointer;
-      font-size: 14px;
-      white-space: nowrap;
-      transition: all 0.2s ease;
-      border: 2px solid transparent;
+      padding: 10px 16px; border-radius: 999px; background: #f1f5f9; color: var(--muted); cursor: pointer; font-size: 14px;
+      white-space: nowrap; transition: all 0.2s ease; border: 2px solid transparent;
     }
+    .tab:hover { background: #e0e7ff; }
+    .tab.active { color: #fff; background: var(--primary); border-color: var(--primary); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
 
-    .tab:hover {
-      background: #e0e7ff;
-    }
+    main { flex: 1; padding: 16px; display: grid; gap: 16px; }
+    .card { background: #fff; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
+    .card h2 { margin: 0; padding: 14px 16px 12px; font-size: 18px; border-bottom: 1px dashed var(--border); }
+    .card .content { padding: 16px; }
+    .grid { display: grid; gap: 12px; }
+    .g3 { grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 720px) { .g3 { grid-template-columns: repeat(3,1fr); } }
 
-    .tab.active {
-      color: #fff;
-      background: var(--primary);
-      border-color: var(--primary);
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-    }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 6px 2px 4px; }
+    input, select, textarea, button { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: #fff; color: var(--text); font-size: 14px; }
+    textarea { min-height: 80px; resize: vertical; }
 
-    main {
-      flex: 1;
-      padding: 16px;
-      display: grid;
-      gap: 16px;
-    }
-
-    .card {
-      background: #fff;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-
-    .card h2 {
-      margin: 0;
-      padding: 14px 16px 12px;
-      font-size: 18px;
-      border-bottom: 1px dashed var(--border);
-    }
-
-    .card .content {
-      padding: 16px;
-    }
-
-    .grid {
-      display: grid;
-      gap: 12px;
-    }
-
-    .g3 {
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-
-    @media (min-width: 720px) {
-      .g3 {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-
-    label {
-      display: block;
-      font-size: 12px;
-      color: var(--muted);
-      margin: 6px 2px 4px;
-    }
-
-    input, select, textarea, button {
-      width: 100%;
-      padding: 10px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: #fff;
-      color: var(--text);
-      font-size: 14px;
-    }
-
-    textarea {
-      min-height: 80px;
-      resize: vertical;
-    }
-
-    .stack {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
+    .stack { display: flex; gap: 10px; flex-wrap: wrap; }
     .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid #cbd9f3;
-      background: #f8fbff;
-      color: var(--text);
-      cursor: pointer;
-      font-size: 14px;
-      transition: all 0.2s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid #cbd9f3; background: #f8fbff; color: var(--text); cursor: pointer; font-size: 14px; transition: all 0.2s;
     }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn.success { background: var(--success); color: #fff; border-color: var(--success); }
+    .btn.warn { background: var(--warn); color: #fff; border-color: var(--warn); }
+    .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
 
-    .btn:hover {
-      transform: translateY(-1px);
-    }
+    /* Dashboard */
+    .stats { display: grid; gap: 12px; grid-template-columns: 1fr; }
+    @media (min-width: 720px) { .stats { grid-template-columns: repeat(4,1fr); } }
+    .stat-card { padding: 16px; border-radius: 10px; border: 1px solid var(--border); text-align: center; }
+    .stat-card h3 { margin: 0 0 4px; font-size: 14px; color: var(--muted); }
+    .stat-card .value { font-size: 20px; font-weight: 700; color: var(--primary); }
 
-    .btn.primary {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-
-    .btn.success {
-      background: var(--success);
-      color: #fff;
-      border-color: var(--success);
-    }
-
-    .btn.warn {
-      background: var(--warn);
-      color: #fff;
-      border-color: var(--warn);
-    }
-
-    .btn.danger {
-      background: var(--danger);
-      color: #fff;
-      border-color: var(--danger);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0 8px;
-    }
-
-    th, td {
-      text-align: left;
-      padding: 10px;
-    }
-
-    tr {
-      background: #fff;
-      border: 1px solid var(--border);
-      vertical-align: top;
-    }
-
-    tr td:first-child {
-      border-radius: 8px 0 0 8px;
-    }
-
-    tr td:last-child {
-      border-radius: 0 8px 8px 0;
-    }
-
-    .muted {
-      color: var(--muted);
-    }
-
-    .mono {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    }
-
-    .small {
-      font-size: 13px;
-    }
-
-    .detail {
-      padding: 12px;
-      background: #fbfdff;
-      border-top: 1px dashed var(--border);
-      font-size: 13px;
-    }
+    /* Table */
+    table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+    th, td { text-align: left; padding: 10px; }
+    tr { background: #fff; border: 1px solid var(--border); vertical-align: top; }
+    tr td:first-child { border-radius: 8px 0 0 8px; }
+    tr td:last-child { border-radius: 0 8px 8px 0; }
+    .muted { color: var(--muted); }
+    .small { font-size: 13px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .detail { padding: 12px; background: #fbfdff; border-top: 1px dashed var(--border); font-size: 13px; }
 
     .footerbar {
-      position: sticky;
-      bottom: 0;
-      background: #fff;
-      border-top: 1px solid var(--border);
-      padding: 10px 16px;
+      position: sticky; bottom: 0; background: #fff; border-top: 1px solid var(--border); padding: 10px 16px;
       box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
     }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
-    .hidden {
-      display: none;
-    }
-
-    .actions {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .report-section {
-      display: grid;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    @media (max-width: 720px) {
-      .logo { width: 40px; height: 40px; }
-      .brand { font-size: 1.1rem; }
-      .tab { padding: 8px 12px; font-size: 13px; }
-    }
+    .report-section { display: grid; gap: 12px; margin-bottom: 16px; }
+    #report-output { margin-top: 10px; white-space: pre-wrap; background: #f8fafc; padding: 12px; border-radius: 8px; }
   </style>
 </head>
 <body>
-  <div class="app">
-    <header>
-      <div class="logo" id="app-logo" style="background-image: url('./logo.png')"></div>
-      <div class="brand">Catatan Piutang</div>
 
-      <div class="tabs" role="tablist" aria-label="Menu">
-        <div class="tab active" data-tab="create">Tambah Pinjaman</div>
+  <!-- LOGIN SCREEN -->
+  <div class="login-screen" id="login-screen">
+    <div class="login-card">
+      <div class="login-logo"></div>
+      <h2 class="login-title">PiutangKu</h2>
+      <p>Masuk untuk mengelola piutang Anda</p>
+      <form id="login-form">
+        <div class="grid">
+          <div>
+            <label>User ID</label>
+            <input type="text" id="login-id" placeholder="Masukkan ID" required />
+          </div>
+          <div>
+            <label>Password</label>
+            <input type="password" id="login-password" placeholder="Masukkan password" required />
+          </div>
+        </div>
+        <button type="submit" class="btn primary">Masuk</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div class="app hidden" id="main-app">
+
+    <header>
+      <div class="logo" style="background-image: url('./logo.png')"></div>
+      <div class="brand">PiutangKu</div>
+      <div class="tabs" role="tablist">
+        <div class="tab active" data-tab="dashboard">Dashboard</div>
+        <div class="tab" data-tab="create">Tambah Pinjaman</div>
         <div class="tab" data-tab="pay">Pembayaran</div>
         <div class="tab" data-tab="rates">Ubah Bunga</div>
         <div class="tab" data-tab="reports">Laporan</div>
@@ -310,105 +153,67 @@
     </header>
 
     <main>
-      <!-- CREATE -->
-      <section class="card" id="tab-create">
-        <h2>Pinjaman Baru</h2>
+      <!-- DASHBOARD -->
+      <section class="card" id="tab-dashboard">
+        <h2>Dashboard</h2>
         <div class="content">
-          <div class="grid g3">
-            <div>
-              <label>Nama Peminjam</label>
-              <input id="c-name" placeholder="cth: Budi Santoso" />
+          <div class="stats">
+            <div class="stat-card">
+              <h3>Total Pinjaman</h3>
+              <div class="value" id="stat-total">Rp0</div>
             </div>
-            <div>
-              <label>Kontak (HP / WA)</label>
-              <input id="c-contact" placeholder="0812xxxxxxx" />
+            <div class="stat-card">
+              <h3>Sisa Piutang</h3>
+              <div class="value" id="stat-outstanding">Rp0</div>
             </div>
-            <div>
-              <label>Alamat</label>
-              <input id="c-address" placeholder="Alamat lengkap (opsional)" />
+            <div class="stat-card">
+              <h3>Lunas</h3>
+              <div class="value" id="stat-paid">0</div>
             </div>
-
-            <div>
-              <label>Tanggal Pinjam</label>
-              <input id="c-start" type="date" />
+            <div class="stat-card">
+              <h3>Terlambat</h3>
+              <div class="value" id="stat-late">0</div>
             </div>
-            <div>
-              <label>Jumlah Pinjaman (Rp)</label>
-              <input id="c-principal" type="number" inputmode="decimal" />
-            </div>
-            <div>
-              <label>Metode</label>
-              <select id="c-method">
-                <option value="interest_only">Bunga saja</option>
-                <option value="principal_interest">Pokok + bunga (flat)</option>
-              </select>
-            </div>
-
-            <div>
-              <label>Periode</label>
-              <select id="c-period">
-                <option value="daily">Harian</option>
-                <option value="monthly">Bulanan</option>
-              </select>
-            </div>
-            <div>
-              <label>Tenor (jumlah periode)</label>
-              <input id="c-tenor" type="number" min="1" step="1" value="6" />
-            </div>
-            <div>
-              <label>Bunga awal % / periode</label>
-              <input id="c-rate" type="number" step="0.01" min="0" />
-            </div>
-
-            <div style="grid-column: 1 / -1">
-              <label>Catatan</label>
-              <textarea id="c-note" placeholder="opsional"></textarea>
-            </div>
-          </div>
-
-          <div style="margin-top: 16px" class="stack">
-            <button class="btn primary" id="btn-create">Simpan Pinjaman</button>
-            <button class="btn" id="btn-clear">Bersihkan Form</button>
           </div>
         </div>
       </section>
 
-      <!-- PAYMENTS -->
+      <!-- CREATE -->
+      <section class="card" id="tab-create" hidden>
+        <h2>Pinjaman Baru</h2>
+        <div class="content">
+          <div class="grid g3">
+            <div><label>Nama Peminjam</label><input id="c-name" /></div>
+            <div><label>Kontak (WA)</label><input id="c-contact" /></div>
+            <div><label>Alamat</label><input id="c-address" /></div>
+            <div><label>Tanggal Pinjam</label><input id="c-start" type="date" /></div>
+            <div><label>Jumlah (Rp)</label><input id="c-principal" type="number" /></div>
+            <div><label>Bunga %</label><input id="c-rate" type="number" step="0.01" /></div>
+            <div><label>Periode</label><select id="c-period"><option value="daily">Harian</option><option value="monthly">Bulanan</option></select></div>
+            <div><label>Tenor</label><input id="c-tenor" type="number" value="6" /></div>
+            <div><label>Metode</label><select id="c-method"><option value="interest_only">Bunga Saja</option><option value="principal_interest">Pokok + Bunga</option></select></div>
+            <div style="grid-column:1/-1"><label>Catatan</label><textarea id="c-note"></textarea></div>
+          </div>
+          <div style="margin-top:16px" class="stack">
+            <button class="btn primary" id="btn-create">Simpan Pinjaman</button>
+            <button class="btn" id="btn-clear">Bersihkan</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAYMENT -->
       <section class="card" id="tab-pay" hidden>
         <h2>Pembayaran</h2>
         <div class="content">
           <div class="grid g3">
-            <div>
-              <label>Pilih Pinjaman</label>
-              <select id="p-loan"></select>
-            </div>
-            <div>
-              <label>Tanggal Bayar</label>
-              <input id="p-date" type="date" />
-            </div>
-            <div>
-              <label>Nominal Bayar (Rp)</label>
-              <input id="p-amount" type="number" inputmode="decimal" />
-            </div>
-
-            <div>
-              <label>Jenis Pembayaran</label>
-              <select id="p-type">
-                <option value="both">Bunga & Pokok</option>
-                <option value="interest">Bunga Saja</option>
-                <option value="principal">Pokok Saja</option>
-              </select>
-            </div>
-
-            <div>
-              <label>Catatan</label>
-              <input id="p-note" />
-            </div>
-
-            <div style="grid-column: 1 / -1" class="small muted" id="p-dueinfo">—</div>
+            <div><label>Pilih Pinjaman</label><select id="p-loan"></select></div>
+            <div><label>Tanggal Bayar</label><input id="p-date" type="date" /></div>
+            <div><label>Nominal (Rp)</label><input id="p-amount" type="number" /></div>
+            <div><label>Jenis</label><select id="p-type"><option value="both">Bunga & Pokok</option><option value="interest">Bunga Saja</option><option value="principal">Pokok Saja</option></select></div>
+            <div><label>Catatan</label><input id="p-note" /></div>
+            <div style="grid-column:1/-1" class="small muted" id="p-dueinfo">—</div>
           </div>
-
-          <div style="margin-top: 16px" class="stack">
+          <div style="margin-top:16px" class="stack">
             <button class="btn success" id="btn-pay">Catat Pembayaran</button>
             <div id="p-breakdown" class="muted small"></div>
           </div>
@@ -417,16 +222,16 @@
 
       <!-- RATES -->
       <section class="card" id="tab-rates" hidden>
-        <h2>Perubahan Bunga</h2>
+        <h2>Ubah Bunga</h2>
         <div class="content">
           <div class="grid g3">
             <div><label>Pilih Pinjaman</label><select id="r-loan"></select></div>
             <div><label>Tanggal Berlaku</label><input id="r-date" type="date" /></div>
-            <div><label>Bunga Baru (% / periode)</label><input id="r-rate" type="number" step="0.01" /></div>
+            <div><label>Bunga Baru (%)</label><input id="r-rate" type="number" step="0.01" /></div>
             <div><label>Catatan</label><input id="r-note" /></div>
           </div>
-          <div style="margin-top: 16px" class="stack">
-            <button class="btn primary" id="btn-rate">Simpan Perubahan</button>
+          <div style="margin-top:16px" class="stack">
+            <button class="btn primary" id="btn-rate">Simpan</button>
             <div id="r-history" class="muted small"></div>
           </div>
         </div>
@@ -434,32 +239,17 @@
 
       <!-- REPORTS -->
       <section class="card" id="tab-reports" hidden>
-        <h2>Laporan & Ekspor</h2>
+        <h2>Laporan</h2>
         <div class="content">
           <div class="report-section">
-            <div>
-              <label>Customer</label>
-              <select id="rep-customer">
-                <option value="">Semua Customer</option>
-              </select>
-            </div>
-            <div>
-              <label>Tanggal Awal</label>
-              <input id="rep-start" type="date" />
-            </div>
-            <div>
-              <label>Tanggal Akhir</label>
-              <input id="rep-end" type="date" />
-            </div>
-            <div style="grid-column: 1 / -1">
-              <button class="btn primary" id="btn-generate-report">Tampilkan Rincian</button>
-            </div>
+            <div><label>Customer</label><select id="rep-customer"><option value="">Semua</option></select></div>
+            <div><label>Dari Tanggal</label><input id="rep-start" type="date" /></div>
+            <div><label>Sampai Tanggal</label><input id="rep-end" type="date" /></div>
+            <div style="grid-column:1/-1"><button class="btn primary" id="btn-generate-report">Tampilkan</button></div>
           </div>
-
-          <div id="report-output" class="muted small" style="margin-top: 10px; white-space: pre-wrap; background: #f8fafc; padding: 12px; border-radius: 8px; display: none;"></div>
-
-          <div class="stack" style="margin-top: 12px">
-            <button class="btn success" id="btn-share-wa">Kirim via WhatsApp</button>
+          <pre id="report-output" class="hidden"></pre>
+          <div class="stack" style="margin-top:12px">
+            <button class="btn success" id="btn-share-wa">Kirim WhatsApp</button>
             <button class="btn" id="btn-download-pdf">Download PDF</button>
           </div>
         </div>
@@ -469,67 +259,57 @@
       <section class="card" id="tab-list" hidden>
         <h2>Daftar Pinjaman</h2>
         <div class="content">
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-            <input id="search" placeholder="Cari by nama / alamat / kontak" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border)" />
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input id="search" placeholder="Cari..." style="flex:1" />
             <select id="filter-status" style="max-width:180px">
-              <option value="all">Semua status</option>
+              <option value="all">Semua</option>
               <option value="active">Aktif</option>
               <option value="lunas">Lunas</option>
-              <option value="gagal_bayar">Gagal bayar</option>
             </select>
           </div>
-
           <div style="overflow:auto">
             <table>
-              <thead>
-                <tr>
-                  <th>Peminjam</th>
-                  <th>Sisa Pokok</th>
-                  <th>Bunga Akumulasi</th>
-                  <th>Total Bayar</th>
-                  <th>Periode</th>
-                  <th>Status</th>
-                  <th>Jatuh Tempo</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
+              <thead><tr>
+                <th>Peminjam</th><th>Sisa Pokok</th><th>Bunga</th><th>Total Bayar</th>
+                <th>Periode</th><th>Status</th><th>Jatuh Tempo</th><th>Aksi</th>
+              </tr></thead>
               <tbody id="loan-rows"></tbody>
             </table>
           </div>
-
-          <div class="muted small" style="margin-top:10px">Klik baris untuk buka detail lengkap (alamat, histori bunga & pembayaran).</div>
+          <div class="muted small">Klik baris untuk detail.</div>
         </div>
       </section>
+
     </main>
 
     <div class="footerbar">
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <div class="muted small">Data tersimpan (Firestore saat terhubung).</div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div class="muted small">PiutangKu - Aplikasi Piutang</div>
         <div style="margin-left:auto" class="stack">
-          <button class="btn" id="btn-pwa-install" style="display:none">Install App</button>
+          <button class="btn" id="btn-logout">Keluar</button>
         </div>
       </div>
     </div>
+
   </div>
 
-  <!-- Firebase & App logic (modular) -->
+  <!-- Firebase & App Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import {
       getFirestore, collection, addDoc, doc, getDoc, getDocs, onSnapshot,
-      query, orderBy, updateDoc, serverTimestamp
+      query, orderBy, updateDoc, where, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // ===== FIREBASE CONFIG =====
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
+    /const firebaseConfig = {
+  apiKey: "AIzaSyDciVnOKpAtRnXdEr-kGPm1tEhStVJw28U",
+  authDomain: "piutangku-bfa1a.firebaseapp.com",
+  projectId: "piutangku-bfa1a",
+  storageBucket: "piutangku-bfa1a.firebasestorage.app",
+  messagingSenderId: "238252334346",
+  appId: "1:238252334346:web:83ff60aaa7eedb1335eef3"
+};
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -537,36 +317,107 @@
     // ===== UTIL =====
     const $ = s => document.querySelector(s);
     const $$ = s => Array.from(document.querySelectorAll(s));
-    const todayStr = () => new Date().toISOString().slice(0, 10);
-    const toISO = d => new Date(d).toISOString().slice(0, 10);
-    const addDays = (d, n) => { const t = new Date(d); t.setDate(t.getDate() + n); return toISO(t); };
-    const addMonths = (d, n) => { const t = new Date(d); t.setMonth(t.getMonth() + n); return toISO(t); };
-    const fmt = n => Number(n || 0).toLocaleString('id-ID');
-    const uuid = () => crypto.randomUUID ? crypto.randomUUID() : (Date.now() + "-" + Math.random().toString(16).slice(2));
-    function normalizeWa(input) {
-      if (!input) return "";
-      let s = String(input).replace(/[^0-9]/g, '');
-      if (s.startsWith('0')) s = '62' + s.slice(1);
-      return s;
-    }
-    function waLink(number, text) {
-      const n = normalizeWa(number);
-      return `https://wa.me/${n}?text=${encodeURIComponent(text)}`;
-    }
+    const todayStr = () => new Date().toISOString().slice(0,10);
+    const toISO = d => new Date(d).toISOString().slice(0,10);
+    const addDays = (d,n)=>{const t=new Date(d);t.setDate(t.getDate()+n);return toISO(t)};
+    const addMonths = (d,n)=>{const t=new Date(d);t.setMonth(t.getMonth()+n);return toISO(t)};
+    const fmt = n => Number(n||0).toLocaleString('id-ID');
+    function waLink(number, text){ return `https://wa.me/${number}?text=${encodeURIComponent(text)}`; }
 
-    // ===== AUTH =====
-    onAuthStateChanged(auth, async user => {
-      if (!user) { await signInAnonymously(auth); return; }
-      initApp();
+    // ===== LOGIN SYSTEM =====
+    $('#login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const userId = $('#login-id').value.trim();
+      const password = $('#login-password').value;
+
+      try {
+        const q = query(collection(db, 'users'), where('id', '==', userId));
+        const snap = await getDocs(q);
+        if (!snap.empty && snap.docs[0].data().password === password) {
+          $('#login-screen').classList.add('hidden');
+          $('#main-app').classList.remove('hidden');
+          initApp();
+        } else {
+          alert('User ID atau password salah.');
+        }
+      } catch (err) {
+        alert('Gagal login: ' + err.message);
+      }
     });
 
-    // ===== FIRESTORE HELPERS =====
-    function loansCol() { return collection(db, 'loans'); }
-    function loanRatesCol(loanId) { return collection(db, 'loans', loanId, 'rates'); }
-    function loanPaysCol(loanId) { return collection(db, 'loans', loanId, 'payments'); }
+    $('#btn-logout').addEventListener('click', () => {
+      if (confirm('Yakin ingin keluar?')) {
+        $('#main-app').classList.add('hidden');
+        $('#login-screen').classList.remove('hidden');
+        $('#login-id').value = '';
+        $('#login-password').value = '';
+      }
+    });
 
+    // ===== DASHBOARD & TAB SYSTEM =====
+    async function initApp() {
+      const tabs = $$('.tab');
+      const views = {
+        dashboard: $('#tab-dashboard'),
+        create: $('#tab-create'),
+        pay: $('#tab-pay'),
+        rates: $('#tab-rates'),
+        reports: $('#tab-reports'),
+        list: $('#tab-list')
+      };
+
+      tabs.forEach(t => t.addEventListener('click', () => {
+        tabs.forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        Object.values(views).forEach(v => v.hidden = true);
+        views[t.dataset.tab].hidden = false;
+      }));
+
+      // Set default
+      views.dashboard.hidden = false;
+      $('#c-start').value = $('#p-date').value = $('#r-date').value = todayStr();
+      $('#rep-start').value = $('#rep-end').value = todayStr();
+
+      // Load data
+      loadDashboard();
+      refreshLoanOptions();
+      refreshCustomerOptions();
+      onSnapshot(collection(db,'loans'), snap => {
+        const loans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderList(loans);
+        loadDashboard();
+        refreshLoanOptions();
+        refreshCustomerOptions();
+      });
+
+      // Tab refresh
+      $('#tab-pay, #tab-rates').addEventListener('click', refreshLoanOptions);
+      $('#tab-reports').addEventListener('click', refreshCustomerOptions);
+    }
+
+    // ===== DASHBOARD =====
+    async function loadDashboard() {
+      const snap = await getDocs(collection(db, 'loans'));
+      const loans = await Promise.all(snap.docs.map(async d => {
+        const data = { id: d.id, ...d.data() };
+        data.payments = (await getDocs(collection(db, 'loans', d.id, 'payments'))).docs.map(p => p.data());
+        return data;
+      }));
+
+      const total = loans.reduce((s, l) => s + l.principal, 0);
+      const outstanding = loans.reduce((s, l) => s + l.outstanding, 0);
+      const paid = loans.filter(l => l.status === 'lunas').length;
+      const late = loans.filter(l => new Date(nextDueDate(l)) < new Date(todayStr()) && l.status !== 'lunas').length;
+
+      $('#stat-total').textContent = 'Rp' + fmt(total);
+      $('#stat-outstanding').textContent = 'Rp' + fmt(outstanding);
+      $('#stat-paid').textContent = paid;
+      $('#stat-late').textContent = late;
+    }
+
+    // ===== CRUD & HELPERS =====
     async function createLoan(payload) {
-      const ref = await addDoc(loansCol(), {
+      const ref = await addDoc(collection(db, 'loans'), {
         name: payload.name,
         contact: payload.contact || '',
         address: payload.address || '',
@@ -580,474 +431,225 @@
         status: 'active',
         createdAt: serverTimestamp()
       });
-      await addDoc(loanRatesCol(ref.id), { date: payload.start, rate: Number(payload.rate), note: 'Bunga awal' });
-      return ref.id;
+      await addDoc(collection(db, 'loans', ref.id, 'rates'), {
+        date: payload.start, rate: Number(payload.rate), note: 'Bunga awal'
+      });
+      alert('Pinjaman tersimpan.');
     }
 
-    async function addRate(loanId, r) {
-      await addDoc(loanRatesCol(loanId), { date: r.date, rate: Number(r.rate), note: r.note || '' });
-    }
-
-    async function getRateHistory(loanId) {
-      const snap = await getDocs(loanRatesCol(loanId));
-      return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => new Date(a.date) - new Date(b.date));
-    }
-
-    async function getPayments(loanId) {
-      const snap = await getDocs(loanPaysCol(loanId));
-      return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => new Date(a.date) - new Date(b.date));
-    }
-
-    async function getLoan(loanId) {
-      const d = await getDoc(doc(db, 'loans', loanId));
-      if (!d.exists()) return null;
-      const base = { id: d.id, ...d.data() };
-      base.rateHistory = await getRateHistory(loanId);
-      base.payments = await getPayments(loanId);
-      return base;
-    }
-
-    function rateAt(loan, dateISO) {
-      let r = loan.rateHistory?.[0]?.rate || 0;
-      for (const it of (loan.rateHistory || []).sort((a, b) => new Date(a.date) - new Date(b.date))) {
-        if (new Date(it.date) <= new Date(dateISO)) r = it.rate; else break;
-      }
-      return r;
-    }
-
-    function lastPaymentDate(loan) {
-      return loan.payments && loan.payments.length ? loan.payments[loan.payments.length - 1].date : null;
-    }
-
-    function nextDueDate(loan) {
-      const paidPeriods = loan.payments?.length || 0;
-      const n = Math.min(loan.tenor, paidPeriods + 1);
-      return loan.period === 'daily' ? addDays(loan.start, n) : addMonths(loan.start, n);
-    }
-
-    function calcInterestDue(loan, fromISO, toISO) {
-      let total = 0, cursor = fromISO;
-      const step = loan.period === 'daily' ? (d) => addDays(d, 1) : (d) => addMonths(d, 1);
-      while (true) {
-        const next = step(cursor);
-        if (new Date(next) > new Date(toISO)) break;
-        const r = rateAt(loan, cursor);
-        total += loan.outstanding * (r / 100);
-        cursor = next;
-      }
-      return +total.toFixed(2);
-    }
-
-    function accruedInterestToToday(loan) {
-      const last = lastPaymentDate(loan) || loan.start;
-      return calcInterestDue(loan, last, todayStr());
-    }
-
-    async function addPayment(loanId, { date, amount, note, type = 'both' }) {
-      const loan = await getLoan(loanId);
-      if (!loan) throw new Error('Pinjaman tidak ditemukan');
-      const interestDue = calcInterestDue(loan, lastPaymentDate(loan) || loan.start, date);
+    async function addPayment(loanId, {date, amount, note, type}) {
+      const loan = (await getDoc(doc(db, 'loans', loanId))).data();
+      const lastPay = loan.payments?.length ? loan.payments[loan.payments.length-1].date : loan.start;
+      const interestDue = calcInterestDue(loan, lastPay, date);
       let interestPaid = 0, principalPaid = 0, remaining = Number(amount);
-      if (remaining <= 0) throw new Error('Nominal tidak valid');
 
       if (type === 'interest') {
         interestPaid = Math.min(remaining, interestDue);
         principalPaid = 0;
-        remaining -= interestPaid;
-        if (remaining > 0) {
-          principalPaid = remaining;
-        }
       } else if (type === 'principal') {
         principalPaid = Math.min(remaining, loan.outstanding);
-        interestPaid = 0;
       } else {
-        if (loan.method === 'interest_only') {
-          interestPaid = Math.min(remaining, interestDue);
-          remaining -= interestPaid;
-          principalPaid = Math.max(0, remaining);
-        } else {
-          const targetPrincipalPerPeriod = loan.principal / loan.tenor;
-          interestPaid = Math.min(remaining, interestDue);
-          remaining -= interestPaid;
-          const principalTarget = Math.min(remaining, targetPrincipalPerPeriod);
-          principalPaid += principalTarget;
-          remaining -= principalTarget;
-          if (remaining > 0) principalPaid += remaining;
-        }
+        interestPaid = Math.min(remaining, interestDue);
+        remaining -= interestPaid;
+        principalPaid = Math.min(remaining, loan.principal / loan.tenor);
+        remaining -= principalPaid;
+        if (remaining > 0) principalPaid += remaining;
       }
 
-      const newOutstanding = Math.max(0, +(loan.outstanding - principalPaid).toFixed(2));
-      await addDoc(loanPaysCol(loanId), {
-        date, amount: Number(amount),
-        interestPaid: +interestPaid.toFixed(2), principalPaid: +principalPaid.toFixed(2),
-        note: note || ''
+      const newOut = Math.max(0, loan.outstanding - principalPaid);
+      await addDoc(collection(db, 'loans', loanId, 'payments'), {
+        date, amount, interestPaid, principalPaid, note
       });
       await updateDoc(doc(db, 'loans', loanId), {
-        outstanding: newOutstanding,
-        status: newOutstanding <= 0 ? 'lunas' : loan.status
+        outstanding: newOut,
+        status: newOut <= 0 ? 'lunas' : loan.status
       });
-      return { interestDue, interestPaid, principalPaid, outstandingAfter: newOutstanding };
+      return { interestDue, interestPaid, principalPaid, outstandingAfter: newOut };
     }
 
-    // ===== UI =====
-    const tabs = $$('.tab');
-    const views = {
-      create: $('#tab-create'),
-      pay: $('#tab-pay'),
-      rates: $('#tab-rates'),
-      reports: $('#tab-reports'),
-      list: $('#tab-list')
-    };
+    function calcInterestDue(loan, from, to) {
+      let total = 0, d = from;
+      const step = loan.period === 'daily' ? addDays : addMonths;
+      while (new Date(step(d)) <= new Date(to)) {
+        total += loan.outstanding * (rateAt(loan, d) / 100);
+        d = step(d);
+      }
+      return +total.toFixed(2);
+    }
 
-    tabs.forEach(t => t.addEventListener('click', () => {
-      tabs.forEach(x => x.classList.remove('active'));
-      t.classList.add('active');
-      Object.values(views).forEach(v => v.hidden = true);
-      const k = t.dataset.tab;
-      views[k].hidden = false;
-      if (k === 'pay' || k === 'rates') refreshLoanOptions();
-      if (k === 'reports') refreshCustomerOptions();
-    }));
+    function rateAt(loan, date) {
+      const rates = (loan.rateHistory || []).sort((a,b) => new Date(a.date) - new Date(b.date));
+      let r = 0;
+      for (const rt of rates) if (new Date(rt.date) <= new Date(date)) r = rt.rate; else break;
+      return r;
+    }
 
-    $('#c-start').value = todayStr();
-    $('#p-date').value = todayStr();
-    $('#r-date').value = todayStr();
-    $('#rep-start').value = todayStr();
-    $('#rep-end').value = todayStr();
+    function nextDueDate(loan) {
+      const paid = loan.payments?.length || 0;
+      const n = Math.min(loan.tenor, paid + 1);
+      return loan.period === 'daily' ? addDays(loan.start, n) : addMonths(loan.start, n);
+    }
 
-    // Create loan
-    $('#btn-create').addEventListener('click', async () => {
-      const name = $('#c-name').value.trim();
-      const principal = Number($('#c-principal').value);
-      if (!name || !principal) { alert('Nama & jumlah pinjaman wajib diisi'); return; }
-      const payload = {
-        name, contact: $('#c-contact').value.trim(), address: $('#c-address').value.trim(),
-        start: $('#c-start').value || todayStr(), principal,
-        method: $('#c-method').value, period: $('#c-period').value,
-        tenor: Number($('#c-tenor').value || 1), rate: Number($('#c-rate').value || 0),
-        note: $('#c-note').value
-      };
-      try {
-        await createLoan(payload);
-        alert('Pinjaman tersimpan.');
-        $('#c-name').value = $('#c-contact').value = $('#c-address').value = $('#c-principal').value = $('#c-rate').value = $('#c-note').value = '';
-      } catch (e) { alert('Gagal simpan: ' + e.message); }
-    });
-
-    $('#btn-clear').addEventListener('click', () => {
-      $('#c-name').value = $('#c-contact').value = $('#c-address').value = $('#c-principal').value = $('#c-rate').value = $('#c-note').value = '';
-    });
-
-    // Refresh options
+    // ===== UI FUNCTIONS =====
     async function refreshLoanOptions() {
-      const snap = await getDocs(query(collection(db, 'loans'), orderBy('createdAt', 'desc')));
+      const snap = await getDocs(query(collection(db,'loans'), orderBy('name')));
       const opts = snap.docs.map(d => {
-        const x = { id: d.id, ...d.data() };
-        return `<option value="${x.id}">${x.name} — Rp${fmt(x.outstanding)} (${x.period === 'daily' ? 'Harian' : 'Bulanan'})</option>`;
+        const x = d.data();
+        return `<option value="${d.id}">${x.name} — Rp${fmt(x.outstanding)}</option>`;
       }).join('');
-      $('#p-loan').innerHTML = `<option value="">— pilih —</option>` + opts;
-      $('#r-loan').innerHTML = `<option value="">— pilih —</option>` + opts;
+      $('#p-loan').innerHTML = '<option value="">— pilih —</option>' + opts;
+      $('#r-loan').innerHTML = '<option value="">— pilih —</option>' + opts;
     }
 
     async function refreshCustomerOptions() {
-      const snap = await getDocs(query(collection(db, 'loans'), orderBy('name')));
+      const snap = await getDocs(query(collection(db,'loans'), orderBy('name')));
       const seen = new Set();
-      const opts = snap.docs.map(d => {
+      const opts = [];
+      snap.docs.forEach(d => {
         const x = d.data();
-        if (seen.has(x.name)) return '';
-        seen.add(x.name);
-        return `<option value="${x.name}">${x.name}</option>`;
-      }).filter(Boolean).join('');
-      $('#rep-customer').innerHTML = `<option value="">Semua Customer</option>` + opts;
+        if (!seen.has(x.name)) {
+          seen.add(x.name);
+          opts.push(`<option value="${x.name}">${x.name}</option>`);
+        }
+      });
+      $('#rep-customer').innerHTML = '<option value="">Semua Customer</option>' + opts.join('');
     }
 
-    // Payment actions
-    $('#p-loan').addEventListener('change', async () => {
-      const id = $('#p-loan').value;
-      if (!id) { $('#p-dueinfo').textContent = '—'; return; }
-      const loan = await getLoan(id);
-      const r = rateAt(loan, $('#p-date').value || todayStr());
-      const next = nextDueDate(loan);
-      $('#p-dueinfo').textContent = `Rate aktif ${r}% • Jatuh tempo ${next}`;
-    });
-
-    $('#btn-pay').addEventListener('click', async () => {
-      const id = $('#p-loan').value;
-      const amount = Number($('#p-amount').value);
-      const type = $('#p-type').value;
-      if (!id || !amount) { alert('Pilih pinjaman & nominal!'); return; }
-      try {
-        const res = await addPayment(id, {
-          date: $('#p-date').value || todayStr(),
-          amount,
-          note: $('#p-note').value,
-          type
-        });
-        $('#p-breakdown').textContent = `Bunga terutang: Rp${fmt(res.interestDue)} • Bayar bunga: Rp${fmt(res.interestPaid)} • Bayar pokok: Rp${fmt(res.principalPaid)} • Sisa pokok: Rp${fmt(res.outstandingAfter)}`;
-        $('#p-amount').value = $('#p-note').value = '';
-      } catch (e) { alert('Gagal: ' + e.message); }
-      refreshCustomerOptions();
-    });
-
-    // Rate changes
-    $('#btn-rate').addEventListener('click', async () => {
-      const id = $('#r-loan').value;
-      const d = $('#r-date').value;
-      const r = Number($('#r-rate').value);
-      if (!id || !d || isNaN(r)) { alert('Lengkapi data'); return; }
-      await addRate(id, { date: d, rate: r, note: $('#r-note').value });
-      alert('Perubahan bunga disimpan.');
-      $('#r-rate').value = $('#r-note').value = '';
-    });
-
-    // Live list
-    onSnapshot(collection(db, 'loans'), async snap => {
-      const loans = await Promise.all(snap.docs.map(async d => {
-        const base = { id: d.id, ...d.data() };
-        base.rateHistory = await getRateHistory(d.id);
-        base.payments = await getPayments(d.id);
-        return base;
-      }));
-      renderList(loans);
-      refreshLoanOptions();
-      refreshCustomerOptions();
-    });
-
-    // Search & render list
-    $('#search').addEventListener('input', () => renderListCache());
-    $('#filter-status').addEventListener('change', () => renderListCache());
-    let lastRenderLoans = [];
-
-    function renderListCache() { renderList(lastRenderLoans); }
-
-    async function renderList(allLoans) {
-      lastRenderLoans = allLoans;
+    function renderList(loans) {
       const q = ($('#search').value || '').toLowerCase();
       const st = $('#filter-status').value;
-      const tbody = $('#loan-rows');
-      const rows = allLoans.filter(l => {
-        const matchesQ = !q || (
-          l.name.toLowerCase().includes(q) ||
-          (l.address || '').toLowerCase().includes(q) ||
-          (l.contact || '').toLowerCase().includes(q)
-        );
-        const matchesS = st === 'all' || l.status === st;
-        return matchesQ && matchesS;
-      }).map(l => {
+      const filtered = loans.filter(l => {
+        const matchQ = !q || l.name.toLowerCase().includes(q) || (l.contact||'').includes(q);
+        const matchS = st === 'all' || l.status === st;
+        return matchQ && matchS;
+      });
+
+      let rows = '';
+      for (const l of filtered) {
         const next = nextDueDate(l);
-        const accInt = accruedInterestToToday(l);
-        const totalPaid = (l.payments || []).reduce((s, p) => s + p.amount, 0);
-        const isLate = new Date(next) < new Date(todayStr()) && l.status !== 'lunas';
-        const statusLabel = l.status === 'lunas' ? 'Lunas' : (isLate ? 'Terlambat' : 'Aktif');
-        const actions = `
-          <div class="actions">
-            <button class="btn" data-wa-rem="${l.id}">WA Reminder</button>
-            <button class="btn" data-wa-report="${l.id}">WA Report</button>
-            <button class="btn" data-pdf="${l.id}">PDF</button>
-          </div>`;
-        return `
-          <tr data-id="${l.id}" class="loan-row">
-            <td><b>${l.name}</b><div class="muted small">${l.contact || ''}</div></td>
+        const accInt = calcInterestDue(l, l.payments?.[l.payments.length-1]?.date || l.start, todayStr());
+        const totalPaid = l.payments?.reduce((s,p)=>s+p.amount,0) || 0;
+        const isLate = new Date(next) < new Date() && l.status !== 'lunas';
+        const status = l.status === 'lunas' ? 'Lunas' : (isLate ? 'Terlambat' : 'Aktif');
+        rows += `
+          <tr data-id="${l.id}" onclick="toggleDetail('${l.id}')">
+            <td><b>${l.name}</b><div class="muted small">${l.contact||''}</div></td>
             <td class="mono">Rp${fmt(l.outstanding)}</td>
             <td class="mono">Rp${fmt(accInt)}</td>
             <td class="mono">Rp${fmt(totalPaid)}</td>
-            <td>${l.period === 'daily' ? 'Harian' : 'Bulanan'}</td>
-            <td>${statusLabel}</td>
-            <td class="small">${next}</td>
-            <td>${actions}</td>
-          </tr>
-          <tr class="loan-detail" data-for="${l.id}" style="display:none">
-            <td colspan="8" class="detail">
-              <div><b>Alamat:</b> ${l.address || '-'}</div>
-              <div style="margin-top:8px"><b>Catatan:</b> ${l.note || '-'}</div>
-              <div style="margin-top:8px"><b>Histori Bunga:</b> ${ (l.rateHistory || []).map(r => `${r.date}→${r.rate}%`).join(' • ') || '-' }</div>
-              <div style="margin-top:8px"><b>Pembayaran:</b>
-                <div style="margin-top:6px">
-                  ${ (l.payments || []).length ? (l.payments || []).map(p => `<div>- ${p.date}: Rp${fmt(p.amount)} (B:${fmt(p.interestPaid || 0)}, P:${fmt(p.principalPaid || 0)})</div>`).join('') : '<div class="muted">— belum ada pembayaran —</div>' }
-                </div>
-              </div>
+            <td>${l.period==='daily'?'Harian':'Bulanan'}</td>
+            <td>${status}</td>
+            <td>${next}</td>
+            <td>
+              <button class="btn" onclick="sendWaReport('${l.id}');event.stopPropagation()">WA</button>
+              <button class="btn" onclick="exportLoanPDF('${l.id}');event.stopPropagation()">PDF</button>
             </td>
           </tr>
-        `;
-      }).join('');
-      tbody.innerHTML = rows || `<tr><td colspan="8" class="muted">Belum ada data</td></tr>`;
-
-      bindLoanActions(allLoans);
-    }
-
-    function bindLoanActions(allLoans) {
-      $$('.loan-row').forEach(r => {
-        r.onclick = (ev) => {
-          if (ev.target.closest('button')) return;
-          const id = r.dataset.id;
-          const detail = document.querySelector(`.loan-detail[data-for="${id}"]`);
-          if (detail) detail.style.display = detail.style.display === 'none' ? 'table-row' : 'none';
-        };
-      });
-
-      $$('[data-wa-rem]').forEach(btn => {
-        btn.onclick = async (e) => {
-          e.stopPropagation();
-          const id = btn.dataset.waRem;
-          const loan = allLoans.find(x => x.id === id) || await getLoan(id);
-          const next = nextDueDate(loan);
-          const msg = `Halo ${loan.name},\nPengingat jatuh tempo pinjaman.\n• Sisa pokok: Rp${fmt(loan.outstanding)}\n• Jatuh tempo: ${next}\n\nTerima kasih.`;
-          window.open(waLink(loan.contact, msg), '_blank');
-        };
-      });
-
-      $$('[data-wa-report]').forEach(btn => {
-        btn.onclick = async e => {
-          e.stopPropagation();
-          const id = btn.dataset.waReport;
-          const loan = allLoans.find(x => x.id === id) || await getLoan(id);
-          const report = [
-            `Ringkasan Pinjaman ${loan.name}`,
-            `Mulai: ${loan.start}`,
-            `Pokok awal: Rp${fmt(loan.principal)} • Sisa pokok: Rp${fmt(loan.outstanding)}`,
-            `Total pembayaran: Rp${fmt((loan.payments || []).reduce((s, p) => s + p.amount, 0))}`,
-            '',
-            ...(loan.payments || []).map(p => `${p.date}: Rp${fmt(p.amount)} (B:${fmt(p.interestPaid || 0)}, P:${fmt(p.principalPaid || 0)})`)
-          ].join('\n');
-          window.open(waLink(loan.contact, report), '_blank');
-        };
-      });
-
-      $$('[data-pdf]').forEach(btn => {
-        btn.onclick = async e => {
-          e.stopPropagation();
-          const id = btn.dataset.pdf;
-          const loan = allLoans.find(x => x.id === id) || await getLoan(id);
-          await exportLoanPDF(loan);
-        };
-      });
-    }
-
-    // Export PDF
-    async function exportLoanPDF(loan) {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-      let y = 48;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(16);
-      doc.text('Laporan Pinjaman', 48, y);
-      y += 24;
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(11);
-      doc.text(`Nama: ${loan.name}`, 48, y);
-      y += 16;
-      doc.text(`Kontak: ${loan.contact || '-'}`, 48, y);
-      y += 16;
-      doc.text(`Alamat: ${loan.address || '-'}`, 48, y);
-      y += 18;
-      doc.text(`Mulai: ${loan.start} • Metode: ${loan.method} • Periode: ${loan.period}`, 48, y);
-      y += 18;
-      doc.text(`Pokok awal: Rp${fmt(loan.principal)} • Sisa pokok: Rp${fmt(loan.outstanding)}`, 48, y);
-      y += 20;
-      doc.setFont('helvetica', 'bold');
-      doc.text('Histori Bunga:', 48, y);
-      y += 16;
-      doc.setFont('helvetica', 'normal');
-      (loan.rateHistory || []).forEach(r => {
-        doc.text(`${r.date} → ${r.rate}% ${r.note ? `(${r.note})` : ''}`, 48, y);
-        y += 14;
-        if (y > 740) { doc.addPage(); y = 48; }
-      });
-      y += 8;
-      doc.setFont('helvetica', 'bold');
-      doc.text('Pembayaran:', 48, y);
-      y += 16;
-      doc.setFont('helvetica', 'normal');
-      if (!loan.payments || loan.payments.length === 0) {
-        doc.text('- belum ada pembayaran -', 48, y);
-        y += 14;
-      } else {
-        loan.payments.forEach(p => {
-          doc.text(`${p.date}  Rp${fmt(p.amount)} (B:${fmt(p.interestPaid || 0)}, P:${fmt(p.principalPaid || 0)})`, 48, y);
-          y += 14;
-          if (y > 740) { doc.addPage(); y = 48; }
-        });
+          <tr class="loan-detail" id="detail-${l.id}" style="display:none">
+            <td colspan="8" class="detail">Alamat: ${l.address||'-'} | Catatan: ${l.note||'-'} | Histori: ${(l.rateHistory||[]).map(r=>r.date+'→'+r.rate+'%').join(', ')}</td>
+          </tr>`;
       }
-      doc.save(`Laporan_${loan.name}_${loan.id.slice(0, 6)}.pdf`);
+      $('#loan-rows').innerHTML = rows || '<tr><td colspan="8">Tidak ada data</td></tr>';
     }
 
-    // REPORTS
+    window.toggleDetail = (id) => {
+      const el = $(`#detail-${id}`);
+      el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+    };
+
+    window.sendWaReport = async (id) => {
+      const loan = (await getDocs(query(collection(db,'loans'), where('__name__', '==', id)))).docs[0].data();
+      const msg = `Laporan: ${loan.name}\nSisa: Rp${fmt(loan.outstanding)}\nJatuh Tempo: ${nextDueDate(loan)}`;
+      window.open(waLink(loan.contact, msg), '_blank');
+    };
+
+    window.exportLoanPDF = async (id) => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.text(`Laporan Pinjaman`, 10, 10);
+      doc.save(`Laporan_${id}.pdf`);
+    };
+
+    // ===== REPORTS =====
     $('#btn-generate-report').addEventListener('click', async () => {
       const customer = $('#rep-customer').value;
       const start = $('#rep-start').value;
       const end = $('#rep-end').value;
-      const output = $('#report-output');
-      const allLoans = lastRenderLoans;
+      const snap = await getDocs(collection(db, 'loans'));
+      const loans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      const filtered = allLoans.filter(l => {
-        if (customer && l.name !== customer) return false;
-        const lastPay = l.payments.length ? l.payments[l.payments.length - 1].date : l.start;
-        return lastPay >= start && lastPay <= end;
-      });
+      let report = `LAPORAN PIUTANG\n${start} s/d ${end}\n${customer ? 'Customer: '+customer : 'Semua'}\n\n`;
+      let total = 0, paid = 0, outstanding = 0;
 
-      let report = `LAPORAN PIUTANG\nTanggal: ${start} s/d ${end}\n${customer ? 'Customer: ' + customer : 'Semua Customer'}\n\n`;
-      let totalPrincipal = 0, totalOutstanding = 0, totalPaid = 0;
+      for (const l of loans) {
+        if (customer && l.name !== customer) continue;
+        const p = l.payments?.filter(p => p.date >= start && p.date <= end).reduce((s,x)=>s+x.amount,0) || 0;
+        report += `${l.name}: Rp${fmt(l.principal)} (Bayar: Rp${fmt(p)}, Sisa: Rp${fmt(l.outstanding)})\n`;
+        total += l.principal;
+        paid += p;
+        outstanding += l.outstanding;
+      }
 
-      filtered.forEach(l => {
-        const paid = l.payments.reduce((s, p) => s + p.amount, 0);
-        totalPrincipal += l.principal;
-        totalOutstanding += l.outstanding;
-        totalPaid += paid;
-        report += `🔹 ${l.name}\n  Pokok: Rp${fmt(l.principal)}\n  Sisa: Rp${fmt(l.outstanding)}\n  Dibayar: Rp${fmt(paid)}\n`;
-        l.payments.forEach(p => {
-          report += `  • ${p.date}: ${fmt(p.amount)} (B:${fmt(p.interestPaid)}, P:${fmt(p.principalPaid)})\n`;
-        });
-        report += '\n';
-      });
-
-      report += `\nTOTAL\nPokok: Rp${fmt(totalPrincipal)}\nSisa: Rp${fmt(totalOutstanding)}\nDibayar: Rp${fmt(totalPaid)}`;
-
-      output.textContent = report;
-      output.style.display = 'block';
+      report += `\nTOTAL\nPokok: Rp${fmt(total)}\nDibayar: Rp${fmt(paid)}\nSisa: Rp${fmt(outstanding)}`;
+      $('#report-output').textContent = report;
+      $('#report-output').classList.remove('hidden');
     });
 
     $('#btn-share-wa').addEventListener('click', () => {
       const text = $('#report-output').textContent;
-      if (!text) return alert('Tidak ada laporan untuk dikirim.');
       window.open(waLink('', text), '_blank');
     });
 
-    $('#btn-download-pdf').addEventListener('click', async () => {
-      const text = $('#report-output').textContent;
-      if (!text) return alert('Tidak ada laporan untuk diunduh.');
+    $('#btn-download-pdf').addEventListener('click', () => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-      const lines = text.split('\n');
-      let y = 10;
-      lines.forEach(line => {
-        if (y > 280) { doc.addPage(); y = 10; }
-        doc.text(line, 10, y);
-        y += 7;
+      const lines = $('#report-output').textContent.split('\n');
+      lines.forEach((line, i) => doc.text(line, 10, 10 + i*8));
+      doc.save('Laporan.pdf');
+    });
+
+    // ===== CREATE, PAY, RATES BUTTONS =====
+    $('#btn-create').onclick = async () => {
+      const name = $('#c-name').value;
+      if (!name || !$('#c-principal').value) return alert('Isi nama dan jumlah');
+      await createLoan({
+        name, contact: $('#c-contact').value, address: $('#c-address').value,
+        start: $('#c-start').value, principal: $('#c-principal').value,
+        method: $('#c-method').value, period: $('#c-period').value,
+        tenor: $('#c-tenor').value, rate: $('#c-rate').value, note: $('#c-note').value
       });
-      doc.save('Laporan_Piutang.pdf');
-    });
+      $('#c-name').value = '';
+    };
 
-    // PWA install prompt
-    let deferredPrompt = null;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      $('#btn-pwa-install').style.display = 'inline-flex';
-    });
+    $('#btn-pay').onclick = async () => {
+      const id = $('#p-loan').value;
+      const amount = $('#p-amount').value;
+      if (!id || !amount) return alert('Pilih pinjaman & nominal');
+      const res = await addPayment(id, {
+        date: $('#p-date').value,
+        amount,
+        note: $('#p-note').value,
+        type: $('#p-type').value
+      });
+      alert(`Dibayar: Bunga Rp${fmt(res.interestPaid)}, Pokok Rp${fmt(res.principalPaid)}`);
+    };
 
-    $('#btn-pwa-install').addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      deferredPrompt = null;
-      $('#btn-pwa-install').style.display = 'none';
-    });
+    $('#btn-rate').onclick = async () => {
+      const id = $('#r-loan').value;
+      if (!id || !$('#r-rate').value) return alert('Lengkapi data');
+      await addDoc(collection(db, 'loans', id, 'rates'), {
+        date: $('#r-date').value,
+        rate: $('#r-rate').value,
+        note: $('#r-note').value
+      });
+      alert('Bunga diubah');
+    };
 
+    // ===== AUTH & PWA =====
+    onAuthStateChanged(auth, user => user || signInAnonymously(auth));
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').then(() => console.log('sw registered')).catch(err => console.warn('sw failed', err));
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
-
-    function initApp() {}
   </script>
 </body>
 </html>
