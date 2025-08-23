@@ -50,18 +50,19 @@
       position: sticky; top: 0; background: #fff; border-bottom: 1px solid var(--border); z-index: 50; padding: 12px 16px;
       display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
-    .logo { 
-      width: 40px; 
-      height: 40px; 
-      border-radius: 12px; 
-      background-size: cover; 
-      background-position: center; 
-      border: 2px solid var(--primary); 
+    .logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background-size: cover;
+      background-position: center;
+      border: 2px solid var(--primary);
+      background-image: url('./logo.png');
     }
-    .brand { 
-      font-weight: 800; 
-      font-size: 1.1rem; 
-      color: var(--primary); 
+    .brand {
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: var(--primary);
     }
     .tabs { display: flex; gap: 8px; margin-left: auto; overflow-x: auto; padding-bottom: 4px; }
     .tab {
@@ -142,44 +143,13 @@
         </div>
         <button type="submit" class="btn primary">Masuk</button>
       </form>
-      <p style="margin-top: 16px; font-size: 14px;">
-        Belum punya akun? <a href="#" id="register-link">Daftar di sini</a>
-      </p>
-    </div>
-  </div>
-
-  <div class="login-screen hidden" id="register-screen">
-    <div class="login-card">
-      <div class="login-logo"></div>
-      <h2 class="login-title">Daftar Akun</h2>
-      <p>Buat akun baru untuk mengelola piutang</p>
-      <form id="register-form">
-        <div class="grid">
-          <div>
-            <label>Email</label>
-            <input type="email" id="register-email" placeholder="Masukkan email" required />
-          </div>
-          <div>
-            <label>Password</label>
-            <input type="password" id="register-password" placeholder="Buat password (min. 6 karakter)" required />
-          </div>
-          <div>
-            <label>Konfirmasi Password</label>
-            <input type="password" id="register-confirm" placeholder="Konfirmasi password" required />
-          </div>
-        </div>
-        <button type="submit" class="btn primary">Daftar</button>
-      </form>
-      <p style="margin-top: 16px; font-size: 14px;">
-        Sudah punya akun? <a href="#" id="login-link">Masuk di sini</a>
-      </p>
     </div>
   </div>
 
   <div class="app hidden" id="main-app">
 
     <header>
-      <div class="logo" style="background-image: url('./logo.png')"></div>
+      <div class="logo"></div>
       <div class="brand">PiutangKu</div>
       <div class="tabs" role="tablist">
         <div class="tab active" data-tab="dashboard">Dashboard</div>
@@ -331,13 +301,12 @@
     import { 
       getAuth, 
       signInWithEmailAndPassword, 
-      createUserWithEmailAndPassword, 
       signOut,
       onAuthStateChanged 
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import {
       getFirestore, collection, addDoc, doc, getDoc, getDocs, onSnapshot,
-      query, orderBy, updateDoc, where, serverTimestamp
+      query, orderBy, updateDoc, where, serverTimestamp, deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     // Konfigurasi Firebase (disamarkan)
@@ -365,39 +334,12 @@
     function waLink(number, text){ return `https://wa.me/${number}?text=${encodeURIComponent(text)}`; }
 
     // ===== AUTH SYSTEM =====
-    $('#register-link').addEventListener('click', (e) => {
-      e.preventDefault();
-      $('#login-screen').classList.add('hidden');
-      $('#register-screen').classList.remove('hidden');
-    });
-
-    $('#login-link').addEventListener('click', (e) => {
-      e.preventDefault();
-      $('#register-screen').classList.add('hidden');
-      $('#login-screen').classList.remove('hidden');
-    });
-
     $('#login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = $('#login-email').value.trim();
       const password = $('#login-password').value;
       try { await signInWithEmailAndPassword(auth, email, password); } 
       catch (error) { alert('Login gagal: ' + error.message); }
-    });
-
-    $('#register-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = $('#register-email').value.trim();
-      const password = $('#register-password').value;
-      const confirmPassword = $('#register-confirm').value;
-      if (password !== confirmPassword) { alert('Konfirmasi password tidak sesuai'); return; }
-      if (password.length < 6) { alert('Password minimal 6 karakter'); return; }
-      try {
-        await createUserWithEmailAndPassword(auth, email, password);
-        alert('Akun berhasil dibuat. Silakan login.');
-        $('#register-screen').classList.add('hidden');
-        $('#login-screen').classList.remove('hidden');
-      } catch (error) { alert('Pendaftaran gagal: ' + error.message); }
     });
 
     $('#btn-logout').addEventListener('click', async () => {
@@ -407,7 +349,6 @@
     onAuthStateChanged(auth, (user) => {
       if (user) {
         $('#login-screen').classList.add('hidden');
-        $('#register-screen').classList.add('hidden');
         $('#main-app').classList.remove('hidden');
         initApp();
       } else {
@@ -436,6 +377,14 @@
         t.classList.add('active');
         Object.values(views).forEach(v => v.hidden = true);
         views[t.dataset.tab].hidden = false;
+        
+        // Refresh data saat tab tertentu dibuka
+        if (t.dataset.tab === 'pay' || t.dataset.tab === 'rates') {
+          refreshLoanOptions();
+        }
+        if (t.dataset.tab === 'reports') {
+          refreshCustomerOptions();
+        }
       }));
 
       views.dashboard.hidden = false;
@@ -446,9 +395,9 @@
         allLoans = await Promise.all(snap.docs.map(async d => {
           const loanData = { id: d.id, ...d.data() };
           const paymentsSnap = await getDocs(collection(db, 'loans', d.id, 'payments'));
-          loanData.payments = paymentsSnap.docs.map(p => p.data());
+          loanData.payments = paymentsSnap.docs.map(p => ({id: p.id, ...p.data()}));
           const ratesSnap = await getDocs(collection(db, 'loans', d.id, 'rates'));
-          loanData.rateHistory = ratesSnap.docs.map(r => r.data());
+          loanData.rateHistory = ratesSnap.docs.map(r => ({id: r.id, ...r.data()}));
           return loanData;
         }));
         loadDashboard();
@@ -476,24 +425,29 @@
 
     // ===== CRUD & HELPERS =====
     async function createLoan(payload) {
-      const ref = await addDoc(collection(db, 'loans'), {
-        name: payload.name,
-        contact: payload.contact || '',
-        address: payload.address || '',
-        start: payload.start,
-        principal: Number(payload.principal),
-        outstanding: Number(payload.principal),
-        method: payload.method,
-        period: payload.period,
-        tenor: Number(payload.tenor),
-        note: payload.note || '',
-        status: 'active',
-        createdAt: serverTimestamp()
-      });
-      await addDoc(collection(db, 'loans', ref.id, 'rates'), {
-        date: payload.start, rate: Number(payload.rate), note: 'Bunga awal'
-      });
-      alert('Pinjaman tersimpan.');
+      let docRef;
+      if (payload.id) {
+        docRef = doc(db, 'loans', payload.id);
+        await updateDoc(docRef, {
+          name: payload.name, contact: payload.contact || '', address: payload.address || '',
+          start: payload.start, principal: Number(payload.principal),
+          outstanding: Number(payload.principal), method: payload.method,
+          period: payload.period, tenor: Number(payload.tenor), note: payload.note || ''
+        });
+        alert('Pinjaman berhasil diperbarui.');
+      } else {
+        docRef = await addDoc(collection(db, 'loans'), {
+          name: payload.name, contact: payload.contact || '', address: payload.address || '',
+          start: payload.start, principal: Number(payload.principal),
+          outstanding: Number(payload.principal), method: payload.method,
+          period: payload.period, tenor: Number(payload.tenor), note: payload.note || '',
+          status: 'active', createdAt: serverTimestamp()
+        });
+        await addDoc(collection(db, 'loans', docRef.id, 'rates'), {
+          date: payload.start, rate: Number(payload.rate), note: 'Bunga awal'
+        });
+        alert('Pinjaman tersimpan.');
+      }
     }
 
     async function addPayment(loanId, {date, amount, note, type}) {
@@ -525,6 +479,7 @@
     }
 
     function calcInterestDue(loan, fromDate, toDate) {
+      if (loan.outstanding <= 0) return 0;
       const dailyRate = (rateAt(loan, fromDate) / 100) / 30; // Asumsi 1 bulan = 30 hari
       const from = new Date(fromDate);
       const to = new Date(toDate);
@@ -538,7 +493,7 @@
     function rateAt(loan, date) {
       if (loan.rateHistory && loan.rateHistory.length > 0) {
         const history = [...loan.rateHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
-        const activeRate = history.find(r => r.date <= date) || history[0];
+        const activeRate = history.find(r => new Date(r.date) <= new Date(date)) || history[0];
         return activeRate ? activeRate.rate : 0;
       }
       return loan.rate || 0;
@@ -550,6 +505,46 @@
       const nextDue = new Date(start);
       nextDue.setDate(start.getDate() + tenorDays);
       return toISO(nextDue);
+    }
+
+    async function deleteLoan(id) {
+        if (!confirm('Apakah Anda yakin ingin menghapus pinjaman ini?')) return;
+        await deleteDoc(doc(db, 'loans', id));
+        alert('Pinjaman berhasil dihapus.');
+    }
+
+    async function editLoan(id) {
+        const loan = allLoans.find(l => l.id === id);
+        if (!loan) return;
+        
+        $('#c-name').value = loan.name;
+        $('#c-contact').value = loan.contact;
+        $('#c-address').value = loan.address;
+        $('#c-start').value = loan.start;
+        $('#c-principal').value = loan.principal;
+        $('#c-rate').value = loan.rateHistory?.length ? loan.rateHistory[loan.rateHistory.length-1].rate : 0;
+        $('#c-period').value = loan.period;
+        $('#c-tenor').value = loan.tenor;
+        $('#c-method').value = loan.method;
+        $('#c-note').value = loan.note;
+
+        // Ganti tombol Simpan menjadi Perbarui
+        $('#btn-create').textContent = 'Perbarui Pinjaman';
+        $('#btn-create').onclick = async () => {
+            await createLoan({...getCreateFormValues(), id: loan.id});
+        };
+        
+        // Pindah ke tab tambah pinjaman
+        document.querySelector('[data-tab="create"]').click();
+    }
+
+    function getCreateFormValues() {
+        return {
+            name: $('#c-name').value, contact: $('#c-contact').value, address: $('#c-address').value,
+            start: $('#c-start').value, principal: Number($('#c-principal').value),
+            method: $('#c-method').value, period: $('#c-period').value,
+            tenor: Number($('#c-tenor').value), rate: Number($('#c-rate').value), note: $('#c-note').value
+        };
     }
 
     // ===== UI FUNCTIONS =====
@@ -584,152 +579,102 @@
 
       let rows = '';
       for (const l of filtered) {
-        const next = nextDueDate(l);
         const lastPayDate = l.payments?.length ? l.payments[l.payments.length-1].date : l.start;
         const accInt = calcInterestDue(l, lastPayDate, todayStr());
         const totalPaid = l.payments?.reduce((s,p)=>s+p.amount,0) || 0;
-        const isLate = new Date(next) < new Date() && l.status !== 'lunas';
-        const status = l.status === 'lunas' ? 'Lunas' : (isLate ? 'Terlambat' : 'Aktif');
+        const status = l.status === 'lunas' ? 'Lunas' : 'Aktif';
         rows += `
-          <tr data-id="${l.id}" onclick="toggleDetail('${l.id}')">
+          <tr data-id="${l.id}">
             <td><b>${l.name}</b><div class="muted small">${l.contact||''}</div></td>
             <td class="mono">Rp${fmt(l.outstanding)}</td>
             <td class="mono">Rp${fmt(accInt)}</td>
             <td class="mono">Rp${fmt(totalPaid)}</td>
             <td>${status}</td>
-            <td>${next}</td>
+            <td>${l.tenor} hari</td>
             <td>
-              <button class="btn" onclick="sendWaReport('${l.id}');event.stopPropagation()">WA</button>
-              <button class="btn" onclick="exportLoanPDF('${l.id}');event.stopPropagation()">PDF</button>
-            </td>
-          </tr>
-          <tr class="loan-detail" id="detail-${l.id}" style="display:none">
-            <td colspan="7" class="detail">
-              <p><b>Detail Pinjaman</b></p>
-              <div>Pokok: Rp${fmt(l.principal)}</div>
-              <div>Tenor: ${l.tenor} hari</div>
-              <div>Alamat: ${l.address||'-'}</div>
-              <div>Catatan: ${l.note||'-'}</div>
-              <div>Histori Bunga: ${(l.rateHistory||[]).map(r=>r.date+'→'+r.rate+'%').join(', ')}</div>
+              <button class="btn" onclick="editLoan('${l.id}');event.stopPropagation()">Edit</button>
+              <button class="btn danger" onclick="deleteLoan('${l.id}');event.stopPropagation()">Hapus</button>
             </td>
           </tr>`;
       }
       $('#loan-rows').innerHTML = rows || '<tr><td colspan="7">Tidak ada data</td></tr>';
     }
-
-    window.toggleDetail = (id) => {
-      const el = $(`#detail-${id}`);
-      el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
-    };
-
-    window.sendWaReport = async (id) => {
-      const loan = allLoans.find(l => l.id === id);
-      const next = nextDueDate(loan);
-      const msg = `Laporan: ${loan.name}\nSisa Pokok: Rp${fmt(loan.outstanding)}\nBunga Terakru: Rp${fmt(calcInterestDue(loan, loan.payments?.length ? loan.payments[loan.payments.length-1].date : loan.start, todayStr()))}\nJatuh Tempo: ${next}`;
-      window.open(waLink(loan.contact, msg), '_blank');
-    };
-
-    window.exportLoanPDF = async (id) => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      
-      const loan = allLoans.find(l => l.id === id);
-      const totalInterestPaid = loan.payments?.reduce((s,p)=>s+p.interestPaid,0) || 0;
-      const totalPrincipalPaid = loan.payments?.reduce((s,p)=>s+p.principalPaid,0) || 0;
-      
-      doc.setFontSize(18);
-      doc.text(`Laporan Pinjaman: ${loan.name}`, 10, 15);
-      doc.setFontSize(12);
-      doc.text(`Pokok Awal: Rp${fmt(loan.principal)}`, 10, 25);
-      doc.text(`Tanggal Pinjam: ${loan.start}`, 10, 32);
-      doc.text(`Sisa Pokok: Rp${fmt(loan.outstanding)}`, 10, 39);
-      doc.text(`Total Bunga Terbayar: Rp${fmt(totalInterestPaid)}`, 10, 46);
-      doc.text(`Total Pokok Terbayar: Rp${fmt(totalPrincipalPaid)}`, 10, 53);
-
-      if (loan.payments?.length) {
-        const tableColumn = ["Tanggal Bayar", "Nominal (Rp)", "Bunga Terbayar", "Pokok Terbayar", "Sisa Pokok"];
-        const tableRows = loan.payments.map(p => [
-          p.date,
-          fmt(p.amount),
-          fmt(p.interestPaid),
-          fmt(p.principalPaid),
-          fmt(loan.outstanding) // Ini perlu dihitung ulang dari awal untuk riwayat
-        ]);
-
-        doc.autoTable({
-          startY: 65,
-          head: [tableColumn],
-          body: tableRows,
-          theme: 'striped',
-          styles: { fontSize: 10, cellPadding: 2 },
-          headStyles: { fillColor: [37, 99, 235] }
-        });
-      }
-      
-      doc.save(`Laporan_${loan.name}_${todayStr()}.pdf`);
-    };
-
+    
     // ===== REPORTS =====
     $('#btn-generate-report').addEventListener('click', async () => {
       const customer = $('#rep-customer').value;
       const start = $('#rep-start').value;
       const end = $('#rep-end').value;
       
-      let report = `LAPORAN PIUTANG\n${start} s/d ${end}\nCustomer: ${customer ? customer : 'Semua'}\n\n`;
+      let report = `LAPORAN PIUTANG\n`;
       let totalPrincipal = 0, totalPaid = 0, totalOutstanding = 0, totalInterestPaid = 0;
 
       const filteredLoans = allLoans.filter(l => !customer || l.name === customer);
 
-      for (const l of filteredLoans) {
-        const paymentsInPeriod = l.payments.filter(p => p.date >= start && p.date <= end);
-        const paidInPeriod = paymentsInPeriod.reduce((s,x)=>s+x.amount,0);
-        const interestInPeriod = paymentsInPeriod.reduce((s,x)=>s+x.interestPaid,0);
+      if (customer) {
+          // Laporan detail per customer
+          const loan = filteredLoans[0];
+          report += `Customer: ${loan.name}\n\n`;
+          report += `RINCIAN PEMBAYARAN\n`;
+          report += `------------------------------\n`;
+          report += `Pokok Awal: Rp${fmt(loan.principal)}\n`;
+          
+          if (loan.payments?.length) {
+              const paymentsInPeriod = loan.payments.filter(p => p.date >= start && p.date <= end);
+              paymentsInPeriod.forEach(p => {
+                  report += `\nTanggal: ${p.date}\n`;
+                  report += `Nominal Bayar: Rp${fmt(p.amount)}\n`;
+                  report += `Bunga Terbayar: Rp${fmt(p.interestPaid)}\n`;
+                  report += `Pokok Terbayar: Rp${fmt(p.principalPaid)}\n`;
+                  totalPaid += p.amount;
+                  totalInterestPaid += p.interestPaid;
+              });
+          }
+          report += `\nRINGKASAN\n`;
+          report += `Sisa Piutang: Rp${fmt(loan.outstanding)}\n`;
 
-        report += `Nama: ${l.name}\n`;
-        report += `Pokok Awal: Rp${fmt(l.principal)}\n`;
-        report += `Sisa Piutang: Rp${fmt(l.outstanding)}\n`;
-        report += `Bayar Periode Ini: Rp${fmt(paidInPeriod)}\n`;
-        report += `Bunga Terbayar Periode Ini: Rp${fmt(interestInPeriod)}\n\n`;
+      } else {
+          // Laporan ringkasan semua customer
+          report += `Dari: ${start} s/d ${end}\n`;
+          report += `\nRINGKASAN PINJAMAN\n`;
+          report += `------------------------------\n`;
 
-        totalPrincipal += l.principal;
-        totalPaid += paidInPeriod;
-        totalOutstanding += l.outstanding;
-        totalInterestPaid += interestInPeriod;
+          for (const l of filteredLoans) {
+              const paymentsInPeriod = l.payments.filter(p => p.date >= start && p.date <= end);
+              const paidInPeriod = paymentsInPeriod.reduce((s,x)=>s+x.amount,0);
+              const interestInPeriod = paymentsInPeriod.reduce((s,x)=>s+x.interestPaid,0);
+
+              report += `\nNama: ${l.name}\n`;
+              report += `Pokok Awal: Rp${fmt(l.principal)}\n`;
+              report += `Sisa Piutang: Rp${fmt(l.outstanding)}\n`;
+              report += `Bayar Periode Ini: Rp${fmt(paidInPeriod)}\n`;
+              report += `Bunga Terbayar Periode Ini: Rp${fmt(interestInPeriod)}\n`;
+
+              totalPrincipal += l.principal;
+              totalPaid += paidInPeriod;
+              totalOutstanding += l.outstanding;
+              totalInterestPaid += interestInPeriod;
+          }
+
+          report += `\n--- TOTAL KESELURUHAN ---\n`;
+          report += `Pokok Awal: Rp${fmt(totalPrincipal)}\n`;
+          report += `Total Terbayar Periode: Rp${fmt(totalPaid)}\n`;
+          report += `Total Bunga Terbayar Periode: Rp${fmt(totalInterestPaid)}\n`;
+          report += `Total Sisa Piutang: Rp${fmt(totalOutstanding)}`;
       }
-
-      report += `--- TOTAL KESELURUHAN ---\n`;
-      report += `Pokok Awal: Rp${fmt(totalPrincipal)}\n`;
-      report += `Total Terbayar Periode: Rp${fmt(totalPaid)}\n`;
-      report += `Total Bunga Terbayar Periode: Rp${fmt(totalInterestPaid)}\n`;
-      report += `Total Sisa Piutang: Rp${fmt(totalOutstanding)}`;
 
       $('#report-output').textContent = report;
       $('#report-output').classList.remove('hidden');
     });
-
-    $('#btn-share-wa').addEventListener('click', () => {
-      const text = $('#report-output').textContent;
-      window.open(waLink('', text), '_blank');
-    });
-
-    $('#btn-download-pdf').addEventListener('click', () => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      const lines = $('#report-output').textContent.split('\n');
-      lines.forEach((line, i) => doc.text(line, 10, 10 + i * 7));
-      doc.save('Laporan_Periode.pdf');
-    });
+    
+    window.editLoan = editLoan;
+    window.deleteLoan = deleteLoan;
 
     // ===== BUTTONS =====
     $('#btn-create').onclick = async () => {
       const name = $('#c-name').value;
       if (!name || !$('#c-principal').value) return alert('Isi nama dan jumlah');
-      await createLoan({
-        name, contact: $('#c-contact').value, address: $('#c-address').value,
-        start: $('#c-start').value, principal: $('#c-principal').value,
-        method: $('#c-method').value, period: $('#c-period').value,
-        tenor: $('#c-tenor').value, rate: $('#c-rate').value, note: $('#c-note').value
-      });
+      await createLoan(getCreateFormValues());
     };
 
     $('#btn-pay').onclick = async () => {
