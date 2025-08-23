@@ -51,9 +51,9 @@
       display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     .logo {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
       background-size: cover;
       background-position: center;
       border: 2px solid var(--primary);
@@ -61,7 +61,7 @@
     }
     .brand {
       font-weight: 800;
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       color: var(--primary);
     }
     .tabs { display: flex; gap: 8px; margin-left: auto; overflow-x: auto; padding-bottom: 4px; }
@@ -632,7 +632,7 @@
 
       let rows = '';
       for (const l of filtered) {
-        const lastPayDate = l.payments?.length ? l.payments[l.payments.length-1].date : l.start;
+        const lastPayDate = l.payments?.length > 0 ? l.payments[l.payments.length-1].date : l.start;
         const accInt = calcInterestDue(l, lastPayDate, todayStr());
         const totalPaid = l.payments?.reduce((s,p)=>s+p.amount,0) || 0;
         const status = l.status === 'lunas' ? 'Lunas' : 'Aktif';
