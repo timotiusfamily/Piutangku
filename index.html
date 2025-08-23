@@ -454,28 +454,39 @@
       const loan = allLoans.find(l => l.id === loanId);
       if (!loan) return;
       
-      const lastPayDate = loan.payments?.length ? loan.payments[loan.payments.length-1].date : loan.start;
-      const interestDue = calcInterestDue(loan, lastPayDate, date);
-      let interestPaid = 0, principalPaid = 0, remaining = Number(amount);
+      const lastPaymentDate = loan.payments.length > 0 ? loan.payments[loan.payments.length - 1].date : loan.start;
+      const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
+      let interestPaid = 0;
+      let principalPaid = 0;
+      let paymentAmount = Number(amount);
 
       if (type === 'interest' || type === 'both') {
-        interestPaid = Math.min(remaining, interestDue);
-        remaining -= interestPaid;
+          interestPaid = Math.min(paymentAmount, interestAccrued);
+          paymentAmount -= interestPaid;
       }
 
-      if (type === 'principal' || (type === 'both' && remaining > 0)) {
-        principalPaid = Math.min(remaining, loan.outstanding);
+      if (type === 'principal' || (type === 'both' && paymentAmount > 0)) {
+          principalPaid = Math.min(paymentAmount, loan.outstanding);
       }
-      
-      const newOut = Math.max(0, loan.outstanding - principalPaid);
+
+      const newOutstanding = Math.max(0, loan.outstanding - principalPaid);
+      const newStatus = newOutstanding <= 0 ? 'lunas' : 'active';
+
       await addDoc(collection(db, 'loans', loanId, 'payments'), {
-        date, amount: Number(amount), interestPaid, principalPaid, note
+          date,
+          amount: Number(amount),
+          interestPaid,
+          principalPaid,
+          note,
+          createdAt: serverTimestamp()
       });
+
       await updateDoc(doc(db, 'loans', loanId), {
-        outstanding: newOut,
-        status: newOut <= 0 ? 'lunas' : loan.status
+          outstanding: newOutstanding,
+          status: newStatus
       });
-      return { interestDue, interestPaid, principalPaid, outstandingAfter: newOut };
+
+      return { interestPaid, principalPaid, newOutstanding };
     }
 
     function calcInterestDue(loan, fromDate, toDate) {
@@ -486,6 +497,8 @@
       const diffTime = to.getTime() - from.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
+      if (diffDays <= 0) return 0;
+
       const interest = loan.outstanding * dailyRate * diffDays;
       return +interest.toFixed(2);
     }
