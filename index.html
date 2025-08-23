@@ -8,7 +8,6 @@
   <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#2563eb" />
 
-  <!-- Library untuk PDF -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 
@@ -164,7 +163,6 @@
 </head>
 <body>
 
-  <!-- Layar Login -->
   <div class="login-screen" id="login-screen">
     <div class="login-card">
       <div class="login-logo"></div>
@@ -186,16 +184,13 @@
     </div>
   </div>
 
-  <!-- Aplikasi Utama -->
   <div class="app hidden" id="main-app">
 
-    <!-- Header -->
     <header>
       <div class="logo"></div>
       <div class="brand">PiutangKu</div>
     </header>
 
-    <!-- Tab Menu di bawah header -->
     <div class="tab-bar">
       <div class="tabs" role="tablist">
         <div class="tab active" data-tab="dashboard">Dashboard</div>
@@ -207,7 +202,6 @@
       </div>
     </div>
 
-    <!-- Konten Utama -->
     <main>
       <section class="card" id="tab-dashboard">
         <h2>Dashboard</h2>
@@ -331,7 +325,6 @@
       </section>
     </main>
 
-    <!-- Footer -->
     <div class="footerbar">
       <div style="display:flex;gap:12px;align-items:center">
         <div class="muted small">PiutangKu - Aplikasi Piutang</div>
@@ -343,7 +336,6 @@
 
   </div>
 
-  <!-- Script Utama -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { 
@@ -552,8 +544,11 @@
 
       const loan = loanSnap.data();
       const payments = (await getDocs(collection(db, 'loans', loanId, 'payments'))).docs.map(p => p.data());
+      
+      // Determine the start date for interest calculation
       const lastPaymentDate = payments.length > 0 ? payments[payments.length - 1].date : loan.start;
 
+      // Calculate accrued interest from last payment date or loan start date
       const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
       let interestPaid = 0, principalPaid = 0;
       let remaining = Number(amount);
@@ -647,38 +642,39 @@
       const customer = $('#rep-customer').value;
       const start = $('#rep-start').value;
       const end = $('#rep-end').value;
-      let report = `LAPORAN PIUTANG\nPeriode: ${start} s/d ${end}\n\n`;
+      let reportText = '';
 
       if (customer) {
         const loan = allLoans.find(l => l.name === customer);
         if (!loan) {
-          $('#report-output').textContent = 'Customer tidak ditemukan.';
-          $('#report-output').classList.remove('hidden');
-          return;
-        }
-        report += `Customer: ${loan.name}\n`;
-        report += `Kontak: ${loan.contact || '-'}\n`;
-        report += `Pokok Awal: Rp${fmt(loan.principal)}\n`;
-        report += `Sisa Pokok: Rp${fmt(loan.outstanding)}\n`;
-        report += `Status: ${loan.status === 'lunas' ? 'Lunas' : 'Aktif'}\n\n`;
-
-        const payments = loan.payments.filter(p => p.date >= start && p.date <= end);
-        if (payments.length) {
-          report += `Pembayaran:\n`;
-          let totalPaid = 0, totalInterest = 0, totalPrincipal = 0;
-          payments.forEach(p => {
-            report += `- ${p.date}: Rp${fmt(p.amount)} (Bunga: Rp${fmt(p.interestPaid)}, Pokok: Rp${fmt(p.principalPaid)}) ${p.note ? `(${p.note})` : ''}\n`;
-            totalPaid += p.amount;
-            totalInterest += p.interestPaid;
-            totalPrincipal += p.principalPaid;
-          });
-          report += `\nTotal Bayar: Rp${fmt(totalPaid)}\n`;
-          report += `Total Bunga: Rp${fmt(totalInterest)}\n`;
-          report += `Total Pokok: Rp${fmt(totalPrincipal)}\n`;
+          reportText = 'Customer tidak ditemukan.';
         } else {
-          report += `Tidak ada pembayaran dalam periode ini.\n`;
+          reportText += `LAPORAN PIUTANG\nPeriode: ${start} s/d ${end}\n\n`;
+          reportText += `Customer: ${loan.name}\n`;
+          reportText += `Kontak: ${loan.contact || '-'}\n`;
+          reportText += `Pokok Awal: Rp${fmt(loan.principal)}\n`;
+          reportText += `Sisa Pokok: Rp${fmt(loan.outstanding)}\n`;
+          reportText += `Status: ${loan.status === 'lunas' ? 'Lunas' : 'Aktif'}\n\n`;
+
+          const payments = loan.payments.filter(p => p.date >= start && p.date <= end);
+          if (payments.length) {
+            reportText += `Pembayaran:\n`;
+            let totalPaid = 0, totalInterest = 0, totalPrincipal = 0;
+            payments.forEach(p => {
+              reportText += `- ${p.date}: Rp${fmt(p.amount)} (Bunga: Rp${fmt(p.interestPaid)}, Pokok: Rp${fmt(p.principalPaid)}) ${p.note ? `(${p.note})` : ''}\n`;
+              totalPaid += p.amount;
+              totalInterest += p.interestPaid;
+              totalPrincipal += p.principalPaid;
+            });
+            reportText += `\nTotal Bayar: Rp${fmt(totalPaid)}\n`;
+            reportText += `Total Bunga: Rp${fmt(totalInterest)}\n`;
+            reportText += `Total Pokok: Rp${fmt(totalPrincipal)}\n`;
+          } else {
+            reportText += `Tidak ada pembayaran dalam periode ini.\n`;
+          }
         }
       } else {
+        reportText += `LAPORAN PIUTANG\nPeriode: ${start} s/d ${end}\n\n`;
         let totalPrincipal = 0, totalPaid = 0, totalInterest = 0, totalOutstanding = 0;
         allLoans.forEach(l => {
           const payments = l.payments.filter(p => p.date >= start && p.date <= end);
@@ -686,26 +682,65 @@
           const int = payments.reduce((s, x) => s + x.interestPaid, 0);
           const prin = payments.reduce((s, x) => s + x.principalPaid, 0);
           if (sum > 0 || l.outstanding > 0) {
-            report += `${l.name}:\n`;
-            report += `  Pokok Awal: Rp${fmt(l.principal)}\n`;
-            report += `  Sisa Pokok: Rp${fmt(l.outstanding)}\n`;
-            report += `  Bayar: Rp${fmt(sum)} (Bunga: Rp${fmt(int)}, Pokok: Rp${fmt(prin)})\n\n`;
+            reportText += `${l.name}:\n`;
+            reportText += `  Pokok Awal: Rp${fmt(l.principal)}\n`;
+            reportText += `  Sisa Pokok: Rp${fmt(l.outstanding)}\n`;
+            reportText += `  Bayar: Rp${fmt(sum)} (Bunga: Rp${fmt(int)}, Pokok: Rp${fmt(prin)})\n\n`;
           }
           totalPrincipal += l.principal;
           totalPaid += sum;
           totalInterest += int;
           totalOutstanding += l.outstanding;
         });
-        report += `Ringkasan:\n`;
-        report += `Total Pokok Awal: Rp${fmt(totalPrincipal)}\n`;
-        report += `Total Sisa Pokok: Rp${fmt(totalOutstanding)}\n`;
-        report += `Total Bayar: Rp${fmt(totalPaid)}\n`;
-        report += `Total Bunga: Rp${fmt(totalInterest)}\n`;
+        reportText += `Ringkasan:\n`;
+        reportText += `Total Pokok Awal: Rp${fmt(totalPrincipal)}\n`;
+        reportText += `Total Sisa Pokok: Rp${fmt(totalOutstanding)}\n`;
+        reportText += `Total Bayar: Rp${fmt(totalPaid)}\n`;
+        reportText += `Total Bunga: Rp${fmt(totalInterest)}\n`;
       }
 
-      $('#report-output').textContent = report;
+      $('#report-output').textContent = reportText;
       $('#report-output').classList.remove('hidden');
     });
+
+    $('#btn-share-wa').addEventListener('click', () => {
+      const reportText = $('#report-output').textContent;
+      if (reportText.trim() === '' || reportText.trim() === 'Customer tidak ditemukan.') {
+        alert('Buat laporan dulu!');
+        return;
+      }
+      window.open(waLink('', reportText), '_blank');
+    });
+
+    $('#btn-download-pdf').addEventListener('click', () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        const reportText = $('#report-output').textContent;
+        if (reportText.trim() === '' || reportText.trim() === 'Customer tidak ditemukan.') {
+            alert('Buat laporan dulu!');
+            return;
+        }
+
+        const lines = reportText.split('\n');
+        let y = 10;
+        const margin = 10;
+        const lineHeight = 7;
+        
+        doc.setFontSize(12);
+        
+        lines.forEach(line => {
+            if (y > doc.internal.pageSize.height - margin) {
+                doc.addPage();
+                y = 10;
+            }
+            doc.text(line, margin, y);
+            y += lineHeight;
+        });
+
+        doc.save("Laporan-Piutang.pdf");
+    });
+
 
     window.editLoan = async function(id) {
       const loan = allLoans.find(l => l.id === id);
