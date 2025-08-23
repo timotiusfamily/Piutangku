@@ -378,8 +378,7 @@
         Object.values(views).forEach(v => v.hidden = true);
         views[t.dataset.tab].hidden = false;
         
-        // Refresh data saat tab tertentu dibuka
-        if (t.dataset.tab === 'pay' || t.dataset.tab === 'rates') {
+        if (t.dataset.tab === 'pay') {
           refreshLoanOptions();
         }
         if (t.dataset.tab === 'reports') {
@@ -452,7 +451,10 @@
 
     async function addPayment(loanId, {date, amount, note, type}) {
       const loan = allLoans.find(l => l.id === loanId);
-      if (!loan) return;
+      if (!loan) {
+        alert("Pinjaman tidak ditemukan.");
+        return;
+      }
       
       const lastPaymentDate = loan.payments.length > 0 ? loan.payments[loan.payments.length - 1].date : loan.start;
       const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
@@ -486,12 +488,52 @@
           status: newStatus
       });
 
-      return { interestPaid, principalPaid, newOutstanding };
+      alert(`Pembayaran berhasil. Dibayar: Bunga Rp${fmt(interestPaid)}, Pokok Rp${fmt(principalPaid)}`);
+    }
+    
+    // Fungsi untuk pratinjau pembayaran
+    function previewPayment() {
+      const id = $('#p-loan').value;
+      const amount = Number($('#p-amount').value) || 0;
+      const type = $('#p-type').value;
+
+      if (!id || amount === 0) {
+        $('#p-breakdown').textContent = "";
+        return;
+      }
+
+      const loan = allLoans.find(l => l.id === id);
+      const lastPaymentDate = loan.payments.length > 0 ? loan.payments[loan.payments.length - 1].date : loan.start;
+      const interestAccrued = calcInterestDue(loan, lastPaymentDate, todayStr());
+      let interestPaid = 0;
+      let principalPaid = 0;
+      let remaining = amount;
+
+      if (type === 'interest' || type === 'both') {
+        interestPaid = Math.min(remaining, interestAccrued);
+        remaining -= interestPaid;
+      }
+
+      if (type === 'principal' || (type === 'both' && remaining > 0)) {
+        principalPaid = Math.min(remaining, loan.outstanding);
+      }
+
+      $('#p-breakdown').innerHTML = `
+        <p><b>Pratinjau Pembayaran</b></p>
+        <p>Bunga Terutang: Rp${fmt(interestAccrued)}</p>
+        <p>Pembayaran akan dialokasikan sebagai:</p>
+        <ul>
+            <li>Bunga: Rp${fmt(interestPaid)}</li>
+            <li>Pokok: Rp${fmt(principalPaid)}</li>
+        </ul>
+        <p>Sisa Pokok setelah pembayaran: Rp${fmt(loan.outstanding - principalPaid)}</p>
+      `;
     }
 
     function calcInterestDue(loan, fromDate, toDate) {
       if (loan.outstanding <= 0) return 0;
-      const dailyRate = (rateAt(loan, fromDate) / 100) / 30; // Asumsi 1 bulan = 30 hari
+      
+      const dailyRate = (rateAt(loan, fromDate) / 100) / 30;
       const from = new Date(fromDate);
       const to = new Date(toDate);
       const diffTime = to.getTime() - from.getTime();
@@ -541,13 +583,11 @@
         $('#c-method').value = loan.method;
         $('#c-note').value = loan.note;
 
-        // Ganti tombol Simpan menjadi Perbarui
         $('#btn-create').textContent = 'Perbarui Pinjaman';
         $('#btn-create').onclick = async () => {
             await createLoan({...getCreateFormValues(), id: loan.id});
         };
         
-        // Pindah ke tab tambah pinjaman
         document.querySelector('[data-tab="create"]').click();
     }
 
@@ -625,29 +665,23 @@
       const filteredLoans = allLoans.filter(l => !customer || l.name === customer);
 
       if (customer) {
-          // Laporan detail per customer
           const loan = filteredLoans[0];
           report += `Customer: ${loan.name}\n\n`;
           report += `RINCIAN PEMBAYARAN\n`;
           report += `------------------------------\n`;
           report += `Pokok Awal: Rp${fmt(loan.principal)}\n`;
+          report += `Sisa Pokok: Rp${fmt(loan.outstanding)}\n\n`;
           
           if (loan.payments?.length) {
               const paymentsInPeriod = loan.payments.filter(p => p.date >= start && p.date <= end);
               paymentsInPeriod.forEach(p => {
-                  report += `\nTanggal: ${p.date}\n`;
+                  report += `Tanggal: ${p.date}\n`;
                   report += `Nominal Bayar: Rp${fmt(p.amount)}\n`;
                   report += `Bunga Terbayar: Rp${fmt(p.interestPaid)}\n`;
-                  report += `Pokok Terbayar: Rp${fmt(p.principalPaid)}\n`;
-                  totalPaid += p.amount;
-                  totalInterestPaid += p.interestPaid;
+                  report += `Pokok Terbayar: Rp${fmt(p.principalPaid)}\n\n`;
               });
           }
-          report += `\nRINGKASAN\n`;
-          report += `Sisa Piutang: Rp${fmt(loan.outstanding)}\n`;
-
       } else {
-          // Laporan ringkasan semua customer
           report += `Dari: ${start} s/d ${end}\n`;
           report += `\nRINGKASAN PINJAMAN\n`;
           report += `------------------------------\n`;
@@ -694,14 +728,16 @@
       const id = $('#p-loan').value;
       const amount = $('#p-amount').value;
       if (!id || !amount) return alert('Pilih pinjaman & nominal');
-      const res = await addPayment(id, {
+      await addPayment(id, {
         date: $('#p-date').value,
         amount,
         note: $('#p-note').value,
         type: $('#p-type').value
       });
-      alert(`Dibayar: Bunga Rp${fmt(res.interestPaid)}, Pokok Rp${fmt(res.principalPaid)}`);
     };
+
+    $('#p-loan, #p-amount, #p-date, #p-type').addEventListener('change', previewPayment);
+    $('#p-amount, #p-date').addEventListener('input', previewPayment);
 
     $('#btn-rate').onclick = async () => {
       const id = $('#r-loan').value;
