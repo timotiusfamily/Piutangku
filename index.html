@@ -417,26 +417,33 @@
 
     // ===== CRUD & HELPERS =====
     async function createLoan(payload) {
-      const ref = await addDoc(collection(db, 'loans'), {
-        name: payload.name,
-        contact: payload.contact || '',
-        address: payload.address || '',
-        start: payload.start,
-        principal: Number(payload.principal),
-        outstanding: Number(payload.principal),
-        method: payload.method,
-        period: payload.period,
-        tenor: Number(payload.tenor),
-        note: payload.note || '',
-        status: 'active',
-        createdAt: serverTimestamp()
-      });
-      // Simpan bunga awal
-      await addDoc(collection(db, 'loans', ref.id, 'rates'), {
-        date: payload.start, rate: Number(payload.rate), note: 'Bunga awal'
-      });
-      alert('Pinjaman tersimpan.');
-    }
+  const user = auth.currentUser;
+  if (!user) throw new Error("Pengguna tidak terautentikasi");
+
+  const ref = await addDoc(collection(db, 'loans'), {
+    name: payload.name,
+    contact: payload.contact || '',
+    address: payload.address || '',
+    start: payload.start,
+    principal: Number(payload.principal),
+    outstanding: Number(payload.principal),
+    method: payload.method,
+    period: payload.period,
+    tenor: Number(payload.tenor),
+    note: payload.note || '',
+    status: 'active',
+    ownerId: user.uid,  // ⬅️ SIMPAN UID PEMILIK
+    createdAt: serverTimestamp()
+  });
+
+  await addDoc(collection(db, 'loans', ref.id, 'rates'), {
+    date: payload.start,
+    rate: Number(payload.rate),
+    note: 'Bunga awal'
+  });
+
+  alert('Pinjaman tersimpan.');
+}
 
     // Ambil bunga berlaku pada tanggal tertentu
     async function rateAt(loanId, date) {
