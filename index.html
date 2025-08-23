@@ -8,6 +8,7 @@
   <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#2563eb" />
 
+  <!-- Library untuk PDF -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 
@@ -51,7 +52,7 @@
       display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     .logo {
-      width: 195px;
+      width: 95px;
       height: 58px;
       border-radius: 12px;
       background-size: cover;
@@ -64,18 +65,40 @@
       font-size: 1.2rem;
       color: var(--primary);
     }
-    .tabs { display: flex; gap: 8px; margin-left: auto; overflow-x: auto; padding-bottom: 4px; }
+
+    /* Tab Bar di bawah header */
+    .tab-bar {
+      display: flex;
+      justify-content: center;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      overflow-x: auto;
+    }
+    .tabs {
+      display: flex;
+      gap: 5px;
+      margin: 0;
+    }
     .tab {
-      padding: 10px 16px; border-radius: 999px; background: #f1f5f9; color: var(--muted); cursor: pointer; font-size: 14px;
-      white-space: nowrap; transition: all 0.2s ease; border: 2px solid transparent;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 14px;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      border: 2px solid transparent;
     }
     .tab:hover { background: #e0e7ff; }
     .tab.active { color: #fff; background: var(--primary); border-color: var(--primary); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
 
-    main { flex: 1; padding: 16px; display: grid; gap: 16px; }
+    main { flex: 1; padding: 13px; display: grid; gap: 12px; }
     .card { background: #fff; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
     .card h2 { margin: 0; padding: 14px 16px 12px; font-size: 18px; border-bottom: 1px dashed var(--border); }
-    .card .content { padding: 16px; }
+    .card .content { padding: 12px; }
     .grid { display: grid; gap: 12px; }
     .g3 { grid-template-columns: 1fr; gap: 12px; }
     @media (min-width: 720px) { .g3 { grid-template-columns: repeat(3,1fr); } }
@@ -125,6 +148,7 @@
 </head>
 <body>
 
+  <!-- Layar Login -->
   <div class="login-screen" id="login-screen">
     <div class="login-card">
       <div class="login-logo"></div>
@@ -146,11 +170,17 @@
     </div>
   </div>
 
+  <!-- Aplikasi Utama -->
   <div class="app hidden" id="main-app">
 
+    <!-- Header -->
     <header>
       <div class="logo"></div>
       <div class="brand">PiutangKu</div>
+    </header>
+
+    <!-- Tab Menu di bawah header -->
+    <div class="tab-bar">
       <div class="tabs" role="tablist">
         <div class="tab active" data-tab="dashboard">Dashboard</div>
         <div class="tab" data-tab="create">Tambah Pinjaman</div>
@@ -159,8 +189,9 @@
         <div class="tab" data-tab="reports">Laporan</div>
         <div class="tab" data-tab="list">Daftar Pinjaman</div>
       </div>
-    </header>
+    </div>
 
+    <!-- Konten Utama -->
     <main>
       <section class="card" id="tab-dashboard">
         <h2>Dashboard</h2>
@@ -282,9 +313,9 @@
           <div class="muted small">Klik baris untuk detail.</div>
         </div>
       </section>
-
     </main>
 
+    <!-- Footer -->
     <div class="footerbar">
       <div style="display:flex;gap:12px;align-items:center">
         <div class="muted small">PiutangKu - Aplikasi Piutang</div>
@@ -296,6 +327,7 @@
 
   </div>
 
+  <!-- Script Utama -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { 
@@ -309,7 +341,7 @@
       query, orderBy, updateDoc, where, serverTimestamp, deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // Konfigurasi Firebase (disamarkan)
+    // Konfigurasi Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyDciVnOKpAtRnXdEr-kGPm1tEhStVJw28U",
       authDomain: "piutangku-bfa1a.firebaseapp.com",
@@ -328,8 +360,6 @@
     const $$ = s => Array.from(document.querySelectorAll(s));
     const todayStr = () => new Date().toISOString().slice(0,10);
     const toISO = d => new Date(d).toISOString().slice(0,10);
-    const addDays = (d,n)=>{const t=new Date(d);t.setDate(t.getDate()+n);return toISO(t)};
-    const addMonths = (d,n)=>{const t=new Date(d);t.setMonth(t.getMonth()+n);return toISO(t)};
     const fmt = n => Number(n||0).toLocaleString('id-ID');
     function waLink(number, text){ return `https://wa.me/${number}?text=${encodeURIComponent(text)}`; }
 
@@ -378,18 +408,18 @@
         Object.values(views).forEach(v => v.hidden = true);
         views[t.dataset.tab].hidden = false;
         
-        if (t.dataset.tab === 'pay') {
-          refreshLoanOptions();
-        }
-        if (t.dataset.tab === 'reports') {
-          refreshCustomerOptions();
-        }
+        if (t.dataset.tab === 'pay') refreshLoanOptions();
+        if (t.dataset.tab === 'reports') refreshCustomerOptions();
       }));
 
+      // Tampilkan dashboard awal
       views.dashboard.hidden = false;
+
+      // Isi tanggal default
       $('#c-start').value = $('#p-date').value = $('#r-date').value = todayStr();
       $('#rep-start').value = $('#rep-end').value = todayStr();
 
+      // Sinkronisasi data real-time
       onSnapshot(collection(db, 'loans'), async (snap) => {
         allLoans = await Promise.all(snap.docs.map(async d => {
           const loanData = { id: d.id, ...d.data() };
@@ -404,16 +434,13 @@
         refreshCustomerOptions();
         renderList(allLoans);
       });
-      
-      $('#search').addEventListener('input', () => renderList(allLoans));
-      $('#filter-status').addEventListener('change', () => renderList(allLoans));
     }
 
     // ===== DASHBOARD =====
-    async function loadDashboard() {
+    function loadDashboard() {
       const total = allLoans.reduce((s, l) => s + l.principal, 0);
       const outstanding = allLoans.reduce((s, l) => s + l.outstanding, 0);
-      const totalInterestPaid = allLoans.reduce((sum, l) => sum + l.payments?.reduce((s, p) => s + p.interestPaid, 0) || 0, 0);
+      const totalInterestPaid = allLoans.reduce((sum, l) => sum + (l.payments?.reduce((s, p) => s + p.interestPaid, 0) || 0), 0);
       const totalPaymentsCount = allLoans.reduce((sum, l) => sum + (l.payments?.length || 0), 0);
 
       $('#stat-total').textContent = 'Rp' + fmt(total);
@@ -422,205 +449,116 @@
       $('#stat-payments').textContent = totalPaymentsCount;
     }
 
-    // ===== CRUD & HELPERS =====
+    // ===== PERBAIKAN FUNGSI BUNGA DAN TENOR =====
+    function calcInterestDue(loan, fromDate, toDate) {
+      if (loan.outstanding <= 0) return 0;
+
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
+      const diffTime = to.getTime() - from.getTime();
+      const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+      const rate = rateAt(loan, fromDate);
+      if (rate <= 0) return 0;
+
+      let dailyRate;
+      if (loan.period === 'daily') {
+        dailyRate = rate / 100; // Bunga harian langsung
+      } else {
+        dailyRate = (rate / 100) / 30; // Bunga bulanan → /30
+      }
+
+      const interest = loan.outstanding * dailyRate * diffDays;
+      return Math.round(interest * 100) / 100; // 2 desimal
+    }
+
+    function rateAt(loan, date) {
+      if (!loan.rateHistory || loan.rateHistory.length === 0) return loan.rate || 0;
+      
+      const history = [...loan.rateHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+      let activeRate = history[0].rate;
+      for (const r of history) {
+        if (new Date(r.date) <= new Date(date)) {
+          activeRate = r.rate;
+        } else break;
+      }
+      return activeRate;
+    }
+
+    // ===== CRUD & FUNGSI UTAMA =====
     async function createLoan(payload) {
-      let docRef;
+      const data = {
+        name: payload.name,
+        contact: payload.contact || '',
+        address: payload.address || '',
+        start: payload.start,
+        principal: Number(payload.principal),
+        outstanding: Number(payload.principal),
+        method: payload.method,
+        period: payload.period,
+        tenor: Number(payload.tenor),
+        note: payload.note || '',
+        createdAt: serverTimestamp()
+      };
+
       if (payload.id) {
-        docRef = doc(db, 'loans', payload.id);
-        await updateDoc(docRef, {
-          name: payload.name, contact: payload.contact || '', address: payload.address || '',
-          start: payload.start, principal: Number(payload.principal),
-          outstanding: Number(payload.principal), method: payload.method,
-          period: payload.period, tenor: Number(payload.tenor), note: payload.note || ''
-        });
+        await updateDoc(doc(db, 'loans', payload.id), data);
         alert('Pinjaman berhasil diperbarui.');
       } else {
-        docRef = await addDoc(collection(db, 'loans'), {
-          name: payload.name, contact: payload.contact || '', address: payload.address || '',
-          start: payload.start, principal: Number(payload.principal),
-          outstanding: Number(payload.principal), method: payload.method,
-          period: payload.period, tenor: Number(payload.tenor), note: payload.note || '',
-          status: 'active', createdAt: serverTimestamp()
+        const docRef = await addDoc(collection(db, 'loans'), {
+          ...data,
+          status: 'active'
         });
         await addDoc(collection(db, 'loans', docRef.id, 'rates'), {
-          date: payload.start, rate: Number(payload.rate), note: 'Bunga awal'
+          date: payload.start,
+          rate: Number(payload.rate),
+          note: 'Bunga awal'
         });
         alert('Pinjaman tersimpan.');
       }
+      $('#btn-create').textContent = 'Simpan Pinjaman';
     }
 
     async function addPayment(loanId, {date, amount, note, type}) {
       const loanRef = doc(db, 'loans', loanId);
       const loanSnap = await getDoc(loanRef);
+      if (!loanSnap.exists()) return alert("Pinjaman tidak ditemukan.");
+
       const loan = loanSnap.data();
-
-      if (!loan) {
-        alert("Pinjaman tidak ditemukan.");
-        return;
-      }
-
-      const paymentsSnap = await getDocs(collection(db, 'loans', loanId, 'payments'));
-      const payments = paymentsSnap.docs.map(p => p.data());
+      const payments = (await getDocs(collection(db, 'loans', loanId, 'payments'))).docs.map(p => p.data());
       const lastPaymentDate = payments.length > 0 ? payments[payments.length - 1].date : loan.start;
 
       const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
-      let interestPaid = 0;
-      let principalPaid = 0;
-      let paymentAmount = Number(amount);
-      
-      if (paymentAmount <= 0) {
-        alert("Nominal pembayaran harus lebih dari 0.");
-        return;
-      }
-      
-      if (type === 'interest' || type === 'both') {
-          interestPaid = Math.min(paymentAmount, interestAccrued);
-          paymentAmount -= interestPaid;
-      }
+      let interestPaid = 0, principalPaid = 0;
+      let remaining = Number(amount);
 
-      if (type === 'principal' || (type === 'both' && paymentAmount > 0)) {
-          principalPaid = Math.min(paymentAmount, loan.outstanding);
+      if (type === 'interest' || type === 'both') {
+        interestPaid = Math.min(remaining, interestAccrued);
+        remaining -= interestPaid;
+      }
+      if (type === 'principal' || (type === 'both' && remaining > 0)) {
+        principalPaid = Math.min(remaining, loan.outstanding);
       }
 
       const newOutstanding = Math.max(0, loan.outstanding - principalPaid);
       const newStatus = newOutstanding <= 0 ? 'lunas' : 'active';
 
       await addDoc(collection(db, 'loans', loanId, 'payments'), {
-          date,
-          amount: Number(amount),
-          interestPaid,
-          principalPaid,
-          note,
-          createdAt: serverTimestamp()
+        date, amount, interestPaid, principalPaid, note, createdAt: serverTimestamp()
       });
 
-      await updateDoc(loanRef, {
-          outstanding: newOutstanding,
-          status: newStatus
-      });
-
-      alert(`Pembayaran berhasil. Dibayar: Bunga Rp${fmt(interestPaid)}, Pokok Rp${fmt(principalPaid)}`);
-    }
-    
-    // Fungsi untuk pratinjau pembayaran
-    function previewPayment() {
-      const id = $('#p-loan').value;
-      const amount = Number($('#p-amount').value) || 0;
-      const type = $('#p-type').value;
-
-      if (!id || amount === 0) {
-        $('#p-breakdown').textContent = "";
-        return;
-      }
-
-      const loan = allLoans.find(l => l.id === id);
-      const lastPaymentDate = loan.payments.length > 0 ? loan.payments[loan.payments.length - 1].date : loan.start;
-      const interestAccrued = calcInterestDue(loan, lastPaymentDate, todayStr());
-      let interestPaid = 0;
-      let principalPaid = 0;
-      let remaining = amount;
-
-      if (type === 'interest' || type === 'both') {
-        interestPaid = Math.min(remaining, interestAccrued);
-        remaining -= interestPaid;
-      }
-
-      if (type === 'principal' || (type === 'both' && remaining > 0)) {
-        principalPaid = Math.min(remaining, loan.outstanding);
-      }
-
-      $('#p-breakdown').innerHTML = `
-        <p><b>Pratinjau Pembayaran</b></p>
-        <p>Bunga Terutang: Rp${fmt(interestAccrued)}</p>
-        <p>Pembayaran akan dialokasikan sebagai:</p>
-        <ul>
-            <li>Bunga: Rp${fmt(interestPaid)}</li>
-            <li>Pokok: Rp${fmt(principalPaid)}</li>
-        </ul>
-        <p>Sisa Pokok setelah pembayaran: Rp${fmt(loan.outstanding - principalPaid)}</p>
-      `;
-    }
-
-    function calcInterestDue(loan, fromDate, toDate) {
-      if (loan.outstanding <= 0) return 0;
-      
-      const dailyRate = (rateAt(loan, fromDate) / 100) / 30;
-      const from = new Date(fromDate);
-      const to = new Date(toDate);
-      const diffTime = to.getTime() - from.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays <= 0) return 0;
-
-      const interest = loan.outstanding * dailyRate * diffDays;
-      return +interest.toFixed(2);
-    }
-
-    function rateAt(loan, date) {
-      if (loan.rateHistory && loan.rateHistory.length > 0) {
-        const history = [...loan.rateHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
-        const activeRate = history.find(r => new Date(r.date) <= new Date(date)) || history[0];
-        return activeRate ? activeRate.rate : 0;
-      }
-      return loan.rate || 0;
-    }
-
-    function nextDueDate(loan) {
-      const start = new Date(loan.start);
-      const tenorDays = loan.tenor || 30;
-      const nextDue = new Date(start);
-      nextDue.setDate(start.getDate() + tenorDays);
-      return toISO(nextDue);
-    }
-
-    async function deleteLoan(id) {
-        if (!confirm('Apakah Anda yakin ingin menghapus pinjaman ini?')) return;
-        await deleteDoc(doc(db, 'loans', id));
-        alert('Pinjaman berhasil dihapus.');
-    }
-
-    async function editLoan(id) {
-        const loan = allLoans.find(l => l.id === id);
-        if (!loan) return;
-        
-        $('#c-name').value = loan.name;
-        $('#c-contact').value = loan.contact;
-        $('#c-address').value = loan.address;
-        $('#c-start').value = loan.start;
-        $('#c-principal').value = loan.principal;
-        $('#c-rate').value = loan.rateHistory?.length ? loan.rateHistory[loan.rateHistory.length-1].rate : 0;
-        $('#c-period').value = loan.period;
-        $('#c-tenor').value = loan.tenor;
-        $('#c-method').value = loan.method;
-        $('#c-note').value = loan.note;
-
-        $('#btn-create').textContent = 'Perbarui Pinjaman';
-        $('#btn-create').onclick = async () => {
-            await createLoan({...getCreateFormValues(), id: loan.id});
-        };
-        
-        document.querySelector('[data-tab="create"]').click();
-    }
-
-    function getCreateFormValues() {
-        return {
-            name: $('#c-name').value, contact: $('#c-contact').value, address: $('#c-address').value,
-            start: $('#c-start').value, principal: Number($('#c-principal').value),
-            method: $('#c-method').value, period: $('#c-period').value,
-            tenor: Number($('#c-tenor').value), rate: Number($('#c-rate').value), note: $('#c-note').value
-        };
+      await updateDoc(loanRef, { outstanding: newOutstanding, status: newStatus });
+      alert(`Pembayaran berhasil. Bunga: Rp${fmt(interestPaid)}, Pokok: Rp${fmt(principalPaid)}`);
     }
 
     // ===== UI FUNCTIONS =====
-    async function refreshLoanOptions() {
-      const opts = allLoans.map(d => {
-        return `<option value="${d.id}">${d.name} — Rp${fmt(d.outstanding)}</option>`;
-      }).join('');
+    function refreshLoanOptions() {
+      const opts = allLoans.map(l => `<option value="${l.id}">${l.name} — Rp${fmt(l.outstanding)}</option>`).join('');
       $('#p-loan').innerHTML = '<option value="">— pilih —</option>' + opts;
       $('#r-loan').innerHTML = '<option value="">— pilih —</option>' + opts;
     }
 
-    async function refreshCustomerOptions() {
+    function refreshCustomerOptions() {
       const seen = new Set();
       const opts = [];
       allLoans.forEach(l => {
@@ -663,92 +601,109 @@
       }
       $('#loan-rows').innerHTML = rows || '<tr><td colspan="7">Tidak ada data</td></tr>';
     }
-    
+
     // ===== REPORTS =====
-    $('#btn-generate-report').addEventListener('click', async () => {
+    $('#btn-generate-report').addEventListener('click', () => {
       const customer = $('#rep-customer').value;
       const start = $('#rep-start').value;
       const end = $('#rep-end').value;
-      
       let report = `LAPORAN PIUTANG\n`;
-      let totalPrincipal = 0, totalPaid = 0, totalOutstanding = 0, totalInterestPaid = 0;
-
-      const filteredLoans = allLoans.filter(l => !customer || l.name === customer);
 
       if (customer) {
-          const loan = filteredLoans[0];
-          report += `Customer: ${loan.name}\n\n`;
-          report += `RINCIAN PEMBAYARAN\n`;
-          report += `------------------------------\n`;
-          report += `Pokok Awal: Rp${fmt(loan.principal)}\n`;
-          report += `Sisa Pokok: Rp${fmt(loan.outstanding)}\n\n`;
-          
-          if (loan.payments?.length) {
-              const paymentsInPeriod = loan.payments.filter(p => p.date >= start && p.date <= end);
-              paymentsInPeriod.forEach(p => {
-                  report += `Tanggal: ${p.date}\n`;
-                  report += `Nominal Bayar: Rp${fmt(p.amount)}\n`;
-                  report += `Bunga Terbayar: Rp${fmt(p.interestPaid)}\n`;
-                  report += `Pokok Terbayar: Rp${fmt(p.principalPaid)}\n\n`;
-              });
-          }
+        const loan = allLoans.find(l => l.name === customer);
+        if (!loan) return;
+        report += `Customer: ${loan.name}\n\n`;
+        report += `Pokok Awal: Rp${fmt(loan.principal)}\n`;
+        report += `Sisa Pokok: Rp${fmt(loan.outstanding)}\n\n`;
+
+        const payments = loan.payments.filter(p => p.date >= start && p.date <= end);
+        if (payments.length) {
+          payments.forEach(p => {
+            report += `Tanggal: ${p.date}\n`;
+            report += `Bayar: Rp${fmt(p.amount)} (Bunga: Rp${fmt(p.interestPaid)}, Pokok: Rp${fmt(p.principalPaid)})\n\n`;
+          });
+        } else {
+          report += `Tidak ada pembayaran dalam periode ini.\n`;
+        }
       } else {
-          report += `Dari: ${start} s/d ${end}\n`;
-          report += `\nRINGKASAN PINJAMAN\n`;
-          report += `------------------------------\n`;
-
-          for (const l of filteredLoans) {
-              const paymentsInPeriod = l.payments.filter(p => p.date >= start && p.date <= end);
-              const paidInPeriod = paymentsInPeriod.reduce((s,x)=>s+x.amount,0);
-              const interestInPeriod = paymentsInPeriod.reduce((s,x)=>s+x.interestPaid,0);
-
-              report += `\nNama: ${l.name}\n`;
-              report += `Pokok Awal: Rp${fmt(l.principal)}\n`;
-              report += `Sisa Piutang: Rp${fmt(l.outstanding)}\n`;
-              report += `Bayar Periode Ini: Rp${fmt(paidInPeriod)}\n`;
-              report += `Bunga Terbayar Periode Ini: Rp${fmt(interestInPeriod)}\n`;
-
-              totalPrincipal += l.principal;
-              totalPaid += paidInPeriod;
-              totalOutstanding += l.outstanding;
-              totalInterestPaid += interestInPeriod;
-          }
-
-          report += `\n--- TOTAL KESELURUHAN ---\n`;
-          report += `Pokok Awal: Rp${fmt(totalPrincipal)}\n`;
-          report += `Total Terbayar Periode: Rp${fmt(totalPaid)}\n`;
-          report += `Total Bunga Terbayar Periode: Rp${fmt(totalInterestPaid)}\n`;
-          report += `Total Sisa Piutang: Rp${fmt(totalOutstanding)}`;
+        report += `Periode: ${start} s/d ${end}\n\n`;
+        let total = 0, paid = 0, interest = 0;
+        allLoans.forEach(l => {
+          const p = l.payments.filter(p => p.date >= start && p.date <= end);
+          const sum = p.reduce((s,x)=>s+x.amount,0);
+          const int = p.reduce((s,x)=>s+x.interestPaid,0);
+          report += `${l.name}: Rp${fmt(sum)} (Bunga: Rp${fmt(int)})\n`;
+          total += l.principal;
+          paid += sum;
+          interest += int;
+        });
+        report += `\nTotal Pokok: Rp${fmt(total)}\n`;
+        report += `Total Bayar: Rp${fmt(paid)}\n`;
+        report += `Total Bunga: Rp${fmt(interest)}`;
       }
 
       $('#report-output').textContent = report;
       $('#report-output').classList.remove('hidden');
     });
-    
-    window.editLoan = editLoan;
-    window.deleteLoan = deleteLoan;
 
-    // ===== BUTTONS =====
-    $('#btn-create').onclick = async () => {
-      const name = $('#c-name').value;
-      if (!name || !$('#c-principal').value) return alert('Isi nama dan jumlah');
-      await createLoan(getCreateFormValues());
+    // ===== GLOBAL FUNCTIONS =====
+    window.editLoan = async function(id) {
+      const loan = allLoans.find(l => l.id === id);
+      if (!loan) return;
+
+      $('#c-name').value = loan.name;
+      $('#c-contact').value = loan.contact;
+      $('#c-address').value = loan.address;
+      $('#c-start').value = loan.start;
+      $('#c-principal').value = loan.principal;
+      $('#c-rate').value = rateAt(loan, todayStr());
+      $('#c-period').value = loan.period;
+      $('#c-tenor').value = loan.tenor;
+      $('#c-method').value = loan.method;
+      $('#c-note').value = loan.note;
+
+      $('#btn-create').textContent = 'Perbarui Pinjaman';
+      $('#btn-create').onclick = () => createLoan({
+        id, name: $('#c-name').value, contact: $('#c-contact').value, address: $('#c-address').value,
+        start: $('#c-start').value, principal: $('#c-principal').value, rate: $('#c-rate').value,
+        period: $('#c-period').value, tenor: $('#c-tenor').value, method: $('#c-method').value,
+        note: $('#c-note').value
+      });
+
+      document.querySelector('[data-tab="create"]').click();
     };
 
-    $('#btn-pay').onclick = async () => {
+    window.deleteLoan = async function(id) {
+      if (confirm('Hapus pinjaman ini?')) {
+        await deleteDoc(doc(db, 'loans', id));
+        alert('Pinjaman dihapus.');
+      }
+    };
+
+    // ===== EVENT LISTENERS =====
+    $('#btn-create').onclick = () => {
+      const name = $('#c-name').value;
+      const principal = $('#c-principal').value;
+      if (!name || !principal) return alert('Isi nama dan jumlah');
+      createLoan({
+        name, contact: $('#c-contact').value, address: $('#c-address').value,
+        start: $('#c-start').value, principal, rate: $('#c-rate').value,
+        period: $('#c-period').value, tenor: $('#c-tenor').value, method: $('#c-method').value,
+        note: $('#c-note').value
+      });
+    };
+
+    $('#btn-pay').onclick = () => {
       const id = $('#p-loan').value;
       const amount = $('#p-amount').value;
       if (!id || !amount) return alert('Pilih pinjaman & nominal');
-      await addPayment(id, {
+      addPayment(id, {
         date: $('#p-date').value,
         amount,
         note: $('#p-note').value,
         type: $('#p-type').value
       });
     };
-
-    $('#p-loan, #p-amount, #p-date, #p-type').addEventListener('change', previewPayment);
-    $('#p-amount, #p-date').addEventListener('input', previewPayment);
 
     $('#btn-rate').onclick = async () => {
       const id = $('#r-loan').value;
@@ -761,7 +716,7 @@
       alert('Bunga diubah');
     };
 
-    // ===== PWA =====
+    // ===== PWA Support =====
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
