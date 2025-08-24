@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>PiutangKu - Aplikasi Piutang</title>
+
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#2563eb" />
+
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e6eef9;
+            --primary: #2563eb;
+            --success: #16a34a;
+            --warn: #f59e0b;
+            --danger: #dc2626;
+            --radius: 14px;
+            --shadow: 0 6px 24px rgba(2,6,23,.06);
+        }
+
+        * { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font: 500 15px/1.6 system-ui, Roboto, 'Segoe UI', Arial; }
+
+        .app { max-width: 980px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+        .hidden { display: none !important; }
+
+        /* Login Screen */
+        .login-screen {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; padding: 20px; background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+        }
+        .login-card {
+            width: 100%; max-width: 400px; background: #fff; border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow); text-align: center;
+        }
+        .login-logo {
+            width: 80px; height: 80px; margin: 0 auto 20px; background-image: url('./logo.png'); background-size: cover; background-position: center;
+            border-radius: 20px; border: 3px solid var(--primary);
+        }
+        .login-title { font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 16px; }
+
+        /* App Layout */
+        header {
+            position: sticky; top: 0; background: #fff; border-bottom: 1px solid var(--border); z-index: 50; padding: 12px 16px;
+            display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .logo {
+            width: 95px;
+            height: 70px;
+            border-radius: 12px;
+            background-size: cover;
+            background-position: center;
+            border: 2px solid var(--primary);
+            background-image: url('./logo.png');
+        }
+        .brand {
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            display: flex;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            padding: 8px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            overflow-x: auto;
+            white-space: nowrap;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) #f1f5f9;
+        }
+        .tab-bar::-webkit-scrollbar { height: 8px; }
+        .tab-bar::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
+        .tab-bar::-webkit-scrollbar-track { background: #f1f5f9; }
+
+        .tabs {
+            display: inline-flex;
+            gap: 8px;
+            margin: 0 auto;
+            padding: 0 8px;
+        }
+        .tab {
+            padding: 10px 16px;
+            border-radius: 999px;
+            background: #f1f5f9;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+            flex-shrink: 0;
+        }
+        .tab:hover { background: #e0e7ff; }
+        .tab.active { color: #fff; background: var(--primary); border-color: var(--primary); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+
+        main { flex: 1; padding: 13px; display: grid; gap: 12px; }
+        .card { background: #fff; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
+        .card h2 { margin: 0; padding: 14px 16px 12px; font-size: 18px; border-bottom: 1px dashed var(--border); }
+        .card .content { padding: 12px; }
+        .grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+        @media (min-width: 720px) { .grid.g3 { grid-template-columns: repeat(3,1fr); } }
+        
+        label { display: block; font-size: 12px; color: var(--muted); margin: 6px 2px 4px; }
+        input, select, textarea, button { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: #fff; color: var(--text); font-size: 14px; }
+        textarea { min-height: 80px; resize: vertical; }
+
+        .stack { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 12px; border-radius: 10px;
+            border: 1px solid #cbd9f3; background: #f8fbff; color: var(--text); cursor: pointer; font-size: 14px; transition: all 0.2s;
+        }
+        .btn:hover { transform: translateY(-1px); }
+        .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .btn.success { background: var(--success); color: #fff; border-color: var(--success); }
+        .btn.warn { background: var(--warn); color: #fff; border-color: var(--warn); }
+        .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+        .stats { display: grid; gap: 12px; grid-template-columns: 1fr; }
+        @media (min-width: 720px) { .stats { grid-template-columns: repeat(4,1fr); } }
+        .stat-card { padding: 16px; border-radius: 10px; border: 1px solid var(--border); text-align: center; }
+        .stat-card h3 { margin: 0 0 4px; font-size: 14px; color: var(--muted); }
+        .stat-card .value { font-size: 20px; font-weight: 700; color: var(--primary); }
+
+        table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+        th, td { text-align: left; padding: 10px; }
+        tr { background: #fff; border: 1px solid var(--border); vertical-align: top; }
+        tr td:first-child { border-radius: 8px 0 0 8px; }
+        tr td:last-child { border-radius: 0 8px 8px 0; }
+        .muted { color: var(--muted); }
+        .small { font-size: 13px; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+        .detail { padding: 12px; background: #fbfdff; border-top: 1px dashed var(--border); font-size: 13px; }
+
+        .footerbar {
+            position: sticky; bottom: 0; background: #fff; border-top: 1px solid var(--border); padding: 10px 16px;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+        }
+        .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .report-section { display: grid; gap: 12px; margin-bottom: 16px; }
+        #report-output { margin-top: 10px; white-space: pre-wrap; background: #f8fafc; padding: 12px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+    <div class="login-screen" id="login-screen">
+        <div class="login-card">
+            <div class="login-logo"></div>
+            <h2 class="login-title">PiutangKu</h2>
+            <p>Masuk untuk mengelola piutang Anda</p>
+            <form id="login-form">
+                <div class="grid">
+                    <div>
+                        <label>Email</label>
+                        <input type="email" id="login-email" placeholder="Masukkan email" required />
+                    </div>
+                    <div>
+                        <label>Password</label>
+                        <input type="password" id="login-password" placeholder="Masukkan password" required />
+                    </div>
+                </div>
+                <button type="submit" class="btn primary">Masuk</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="app hidden" id="main-app">
+
+        <header>
+            <div class="logo"></div>
+            <div class="brand">PiutangKu</div>
+        </header>
+
+        <div class="tab-bar">
+            <div class="tabs" role="tablist">
+                <div class="tab active" data-tab="dashboard">Dashboard</div>
+                <div class="tab" data-tab="create">Tambah Pinjaman</div>
+                <div class="tab" data-tab="pay">Pembayaran</div>
+                <div class="tab" data-tab="rates">Ubah Bunga</div>
+                <div class="tab" data-tab="reports">Laporan</div>
+                <div class="tab" data-tab="list">Daftar Pinjaman</div>
+            </div>
+        </div>
+
+        <main>
+            <section class="card" id="tab-dashboard">
+                <h2>Dashboard</h2>
+                <div class="content">
+                    <div class="stats">
+                        <div class="stat-card">
+                            <h3>Total Pinjaman</h3>
+                            <div class="value" id="stat-total">Rp0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Sisa Piutang</h3>
+                            <div class="value" id="stat-outstanding">Rp0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Bunga Terbayar</h3>
+                            <div class="value" id="stat-interest-paid">Rp0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Jumlah Pembayaran</h3>
+                            <div class="value" id="stat-payments">0</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" id="tab-create" hidden>
+                <h2>Pinjaman Baru</h2>
+                <div class="content">
+                    <div class="grid g3">
+                        <div><label>Nama Peminjam</label><input id="c-name" /></div>
+                        <div><label>Kontak (WA)</label><input id="c-contact" /></div>
+                        <div><label>Alamat</label><input id="c-address" /></div>
+                        <div><label>Tanggal Pinjam</label><input id="c-start" type="date" /></div>
+                        <div><label>Jumlah (Rp)</label><input id="c-principal" type="number" /></div>
+                        <div><label>Bunga %</label><input id="c-rate" type="number" step="0.01" /></div>
+                        <div><label>Periode Bunga</label><select id="c-period"><option value="daily">Harian</option><option value="monthly">Bulanan</option></select></div>
+                        <div>
+                            <label>Tenor</label>
+                            <div style="display:flex;gap:8px">
+                                <input id="c-tenor-value" type="number" value="30" placeholder="Nilai" />
+                                <select id="c-tenor-unit"><option value="days">Hari</option><option value="months">Bulan</option></select>
+                            </div>
+                        </div>
+                        <div><label>Metode</label><select id="c-method"><option value="interest_only">Bunga Saja</option><option value="principal_interest">Pokok + Bunga</option><option value="fixed_installment">Angsuran Tetap</option></select></div>
+                        <div id="c-fees" class="hidden" style="grid-column:1/-1; display:flex; gap:12px;">
+                            <div style="flex:1;"><label>Biaya Admin (Rp)</label><input id="c-admin-fee" type="number" value="0" /></div>
+                            <div style="flex:1;"><label>Biaya Tabungan (Rp)</label><input id="c-savings-fee" type="number" value="0" /></div>
+                        </div>
+                        <div style="grid-column:1/-1"><label>Catatan</label><textarea id="c-note"></textarea></div>
+                    </div>
+                    <div style="margin-top:16px" class="stack">
+                        <button class="btn primary" id="btn-create">Simpan Pinjaman</button>
+                        <button class="btn" id="btn-clear">Bersihkan</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" id="tab-pay" hidden>
+                <h2>Pembayaran</h2>
+                <div class="content">
+                    <div class="grid g3">
+                        <div><label>Pilih Pinjaman</label><select id="p-loan"></select></div>
+                        <div><label>Tanggal Bayar</label><input id="p-date" type="date" /></div>
+                        <div id="p-amount-div"><label>Nominal (Rp)</label><input id="p-amount" type="number" /></div>
+                        <div><label>Jenis</label><select id="p-type">
+                            <option value="both">Bunga & Pokok</option>
+                            <option value="interest">Bunga Saja</option>
+                            <option value="principal">Pokok Saja</option>
+                            <option value="partial_principal">Bayar Pokok Sebagian</option>
+                        </select></div>
+                        <div><label>Catatan</label><input id="p-note" /></div>
+                        <div style="grid-column:1/-1" class="small muted" id="p-dueinfo">—</div>
+                    </div>
+                    <div style="margin-top:16px" class="stack">
+                        <button class="btn success" id="btn-pay">Catat Pembayaran</button>
+                        <button class="btn primary hidden" id="btn-full-pay">Pelunasan Dipercepat</button>
+                        <pre id="p-breakdown" class="small muted hidden" style="background: #f8fafc; padding: 12px; border-radius: 8px;"></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" id="tab-rates" hidden>
+                <h2>Ubah Bunga</h2>
+                <div class="content">
+                    <div class="grid g3">
+                        <div><label>Pilih Pinjaman</label><select id="r-loan"></select></div>
+                        <div><label>Tanggal Berlaku</label><input id="r-date" type="date" /></div>
+                        <div><label>Bunga Baru (%)</label><input id="r-rate" type="number" step="0.01" /></div>
+                        <div><label>Catatan</label><input id="r-note" /></div>
+                    </div>
+                    <div style="margin-top:16px" class="stack">
+                        <button class="btn primary" id="btn-rate">Simpan</button>
+                        <div id="r-history" class="muted small"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" id="tab-reports" hidden>
+                <h2>Laporan</h2>
+                <div class="content">
+                    <div class="report-section">
+                        <div><label>Customer</label><select id="rep-customer"><option value="">Semua</option></select></div>
+                        <div><label>Dari Tanggal</label><input id="rep-start" type="date" /></div>
+                        <div><label>Sampai Tanggal</label><input id="rep-end" type="date" /></div>
+                        <div style="grid-column:1/-1"><button class="btn primary" id="btn-generate-report">Tampilkan</button></div>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table id="report-table" class="hidden">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Nominal</th>
+                                    <th>Bunga Dibayar</th>
+                                    <th>Pokok Dibayar</th>
+                                    <th>Sisa Pokok</th>
+                                    <th>Catatan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="report-body"></tbody>
+                            <tfoot id="report-footer" class="hidden">
+                                <tr>
+                                    <td><b>Total</b></td>
+                                    <td id="total-amount" class="mono"></td>
+                                    <td id="total-interest" class="mono"></td>
+                                    <td id="total-principal" class="mono"></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <pre id="report-output" class="hidden"></pre>
+                    <div class="stack" style="margin-top:12px">
+                        <button class="btn success" id="btn-share-wa">Kirim WhatsApp</button>
+                        <button class="btn" id="btn-download-pdf">Download PDF</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" id="tab-list" hidden>
+                <h2>Daftar Pinjaman</h2>
+                <div class="content">
+                    <div style="display:flex;gap:8px;margin-bottom:8px">
+                        <input id="search" placeholder="Cari..." style="flex:1" />
+                        <select id="filter-status" style="max-width:180px">
+                            <option value="all">Semua</option>
+                            <option value="active">Aktif</option>
+                            <option value="lunas">Lunas</option>
+                        </select>
+                    </div>
+                    <div style="overflow:auto">
+                        <table>
+                            <thead><tr>
+                                <th>Peminjam</th><th>Sisa Pokok</th><th>Bunga</th><th>Total Bayar</th>
+                                <th>Status</th><th>Jatuh Tempo</th><th>Aksi</th>
+                            </tr></thead>
+                            <tbody id="loan-rows"></tbody>
+                        </table>
+                    </div>
+                    <div class="muted small">Klik baris untuk detail.</div>
+                </div>
+            </section>
+        </main>
+
+        <div class="footerbar">
+            <div style="display:flex;gap:12px;align-items:center">
+                <div class="muted small">PiutangKu - Aplikasi Piutang</div>
+                <div style="margin-left:auto" class="stack">
+                    <button class="btn" id="btn-logout">Keluar</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import {
+            getAuth,
+            signInWithEmailAndPassword,
+            signOut,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import {
+            getFirestore, collection, addDoc, doc, getDoc, getDocs, onSnapshot,
+            query, orderBy, updateDoc, where, serverTimestamp, deleteDoc, runTransaction
+        } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDciVnOKpAtRnXdEr-kGPm1tEhStVJw28U",
+            authDomain: "piutangku-bfa1a.firebaseapp.com",
+            projectId: "piutangku-bfa1a",
+            storageBucket: "piutangku-bfa1a.firebasestorage.app",
+            messagingSenderId: "238252334346",
+            appId: "1:238252334346:web:83ff60aaa7eedb1335eef3"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const $ = s => document.querySelector(s);
+        const $$ = s => Array.from(document.querySelectorAll(s));
+        const todayStr = () => new Date().toISOString().slice(0,10);
+        
+        const toISO = d => {
+            try {
+                if (!d) return null;
+                const date = new Date(d);
+                if (isNaN(date.getTime())) return null;
+                return date.toISOString().slice(0,10);
+            } catch (e) {
+                console.error("Error parsing date:", e);
+                return null;
+            }
+        };
+        const fmt = n => Number(n||0).toLocaleString('id-ID');
+        function waLink(number, text){ return `https://wa.me/${number}?text=${encodeURIComponent(text)}`; }
+
+        // ===== AUTH SYSTEM =====
+        $('#login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = $('#login-email').value.trim();
+            const password = $('#login-password').value;
+            try { await signInWithEmailAndPassword(auth, email, password); }
+            catch (error) { alert('Login gagal: ' + error.message); }
+        });
+
+        $('#btn-logout').addEventListener('click', async () => {
+            if (confirm('Yakin ingin keluar?')) { try { await signOut(auth); } catch (error) { console.error('Error signing out:', error); } }
+        });
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                $('#login-screen').classList.add('hidden');
+                $('#main-app').classList.remove('hidden');
+                initApp();
+            } else {
+                $('#main-app').classList.add('hidden');
+                $('#login-screen').classList.remove('hidden');
+            }
+        });
+
+        let allLoans = [];
+
+        async function initApp() {
+            const tabs = $$('.tab');
+            const views = {
+                dashboard: $('#tab-dashboard'),
+                create: $('#tab-create'),
+                pay: $('#tab-pay'),
+                rates: $('#tab-rates'),
+                reports: $('#tab-reports'),
+                list: $('#tab-list')
+            };
+
+            tabs.forEach(t => t.addEventListener('click', () => {
+                tabs.forEach(x => x.classList.remove('active'));
+                t.classList.add('active');
+                Object.values(views).forEach(v => v.hidden = true);
+                views[t.dataset.tab].hidden = false;
+                t.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+            }));
+
+            views.dashboard.hidden = false;
+            tabs.find(t => t.dataset.tab === 'dashboard').classList.add('active');
+            tabs.find(t => t.dataset.tab === 'dashboard').scrollIntoView();
+
+            $('#c-start').value = $('#p-date').value = $('#r-date').value = todayStr();
+            $('#rep-start').value = $('#rep-end').value = todayStr();
+            
+            // Event listener untuk mode angsuran
+            $('#c-method').addEventListener('change', (e) => {
+                if (e.target.value === 'fixed_installment') {
+                    $('#c-fees').classList.remove('hidden');
+                } else {
+                    $('#c-fees').classList.add('hidden');
+                }
+            });
+            
+            // START: REVISI - Event listener baru untuk jenis pembayaran
+            $('#p-type').addEventListener('change', (e) => {
+                const loanId = $('#p-loan').value;
+                const loan = allLoans.find(l => l.id === loanId);
+                const isFixedInstallment = loan?.method === 'fixed_installment';
+
+                if (isFixedInstallment && e.target.value !== 'partial_principal') {
+                    $('#p-amount-div').classList.add('hidden');
+                } else {
+                    $('#p-amount-div').classList.remove('hidden');
+                }
+            });
+            // END: REVISI
+
+            onSnapshot(collection(db, 'loans'), async (snap) => {
+                allLoans = await Promise.all(snap.docs.map(async d => {
+                    const loanData = { id: d.id, ...d.data() };
+                    const paymentsSnap = await getDocs(query(collection(db, 'loans', d.id, 'payments'), orderBy('date')));
+                    loanData.payments = paymentsSnap.docs.map(p => ({id: p.id, ...p.data()}));
+                    const ratesSnap = await getDocs(query(collection(db, 'loans', d.id, 'rates'), orderBy('date')));
+                    loanData.rateHistory = ratesSnap.docs.map(r => ({id: r.id, ...r.data()}));
+                    return loanData;
+                }));
+                loadDashboard();
+                refreshLoanOptions();
+                refreshCustomerOptions();
+                renderList(allLoans);
+            });
+
+            $('#p-loan').addEventListener('change', updatePaymentDueInfo);
+            $('#p-date').addEventListener('change', updatePaymentDueInfo);
+        }
+        
+        function updatePaymentDueInfo() {
+            const loanId = $('#p-loan').value;
+            const payDate = $('#p-date').value;
+            const loan = allLoans.find(l => l.id === loanId);
+            
+            if (loanId && payDate && loan) {
+                // START: REVISI - Logika untuk menampilkan input nominal jika tipe pembayaran adalah 'partial_principal'
+                const paymentType = $('#p-type').value;
+                if (loan.method === 'fixed_installment') {
+                    if (paymentType === 'partial_principal') {
+                        $('#p-amount-div').classList.remove('hidden');
+                        $('#p-dueinfo').textContent = `Sisa pokok: Rp${fmt(loan.outstanding)}. Bunga terutang: Rp${fmt(calcInterestDue(loan, loan.payments.length > 0 ? loan.payments[loan.payments.length - 1].date : loan.start, payDate))}`;
+                    } else {
+                        const totalPayment = calculateFixedInstallment(loan.principal, loan.rate, loan.tenorValue, loan.tenorUnit);
+                        $('#p-dueinfo').textContent = `Angsuran tetap: Rp${fmt(totalPayment)}`;
+                        $('#p-amount-div').classList.add('hidden');
+                    }
+                    $('#btn-full-pay').classList.remove('hidden');
+                } else {
+                    const sortedPayments = [...loan.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
+                    const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : loan.start;
+                    const interestAccrued = calcInterestDue(loan, lastPaymentDate, payDate);
+                    $('#p-dueinfo').textContent = `Bunga terutang sampai hari ini: Rp${fmt(interestAccrued)}`;
+                    $('#p-amount-div').classList.remove('hidden');
+                    $('#btn-full-pay').classList.add('hidden');
+                }
+                // END: REVISI
+            } else {
+                $('#p-dueinfo').textContent = '—';
+                $('#p-amount-div').classList.remove('hidden');
+                $('#btn-full-pay').classList.add('hidden');
+            }
+        }
+
+        function calculateFixedInstallment(principal, rate, tenorValue, tenorUnit) {
+            // Konversi tenor dan rate ke harian
+            const N = tenorUnit === 'days' ? tenorValue : tenorValue * 30; // total hari
+            const i_daily = (rate / 100) / 30; // bunga harian
+
+            // Rumus angsuran annuitas
+            if (i_daily === 0) return principal / N;
+            const installment = (principal * i_daily) / (1 - Math.pow(1 + i_daily, -N));
+            return Math.round(installment);
+        }
+
+        function calculateFullPaymentAmount(loanId, payDate) {
+            const loan = allLoans.find(l => l.id === loanId);
+            if (!loan) return 0;
+            
+            let outstandingPrincipal = loan.outstanding;
+            let lastPaymentDate = loan.start;
+            
+            const sortedPayments = [...loan.payments].sort((a,b) => new Date(a.date) - new Date(b.date));
+            for (const payment of sortedPayments) {
+                if (new Date(payment.date) <= new Date(payDate)) {
+                    lastPaymentDate = payment.date;
+                }
+            }
+            
+            // Hitung sisa pokok dan bunga yang terutang hingga hari ini
+            const interestDue = calcInterestDue(loan, lastPaymentDate, payDate);
+            return outstandingPrincipal + interestDue;
+        }
+
+        function loadDashboard() {
+            const total = allLoans.reduce((s, l) => s + l.principal, 0);
+            const outstanding = allLoans.reduce((s, l) => s + l.outstanding, 0);
+            const totalInterestPaid = allLoans.reduce((sum, l) => sum + (l.payments?.reduce((s, p) => s + p.interestPaid, 0) || 0), 0);
+            const totalPaymentsCount = allLoans.reduce((sum, l) => sum + (l.payments?.length || 0), 0);
+
+            $('#stat-total').textContent = 'Rp' + fmt(total);
+            $('#stat-outstanding').textContent = 'Rp' + fmt(outstanding);
+            $('#stat-interest-paid').textContent = 'Rp' + fmt(totalInterestPaid);
+            $('#stat-payments').textContent = totalPaymentsCount;
+        }
+
+        function calcInterestDue(loan, fromDate, toDate) {
+            if (!loan || loan.principal <= 0 || !fromDate || !toDate) return 0;
+            
+            const from = new Date(fromDate);
+            const to = new Date(toDate);
+            
+            if (to < from) return 0;
+
+            let totalInterest = 0;
+            let currentDate = new Date(from);
+            
+            while (currentDate.toISOString().slice(0,10) <= toDate) {
+                const rate = rateAt(loan, toISO(currentDate));
+                if (rate > 0) {
+                    const dailyRate = rate / 100 / (loan.period === 'monthly' ? 30 : 1);
+                    totalInterest += loan.principal * dailyRate;
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            return Math.round(totalInterest);
+        }
+
+        function rateAt(loan, date) {
+            if (!loan.rateHistory || loan.rateHistory.length === 0) return 0;
+            const history = [...loan.rateHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+            let activeRate = 0;
+            for (const r of history) {
+                if (new Date(r.date) <= new Date(date)) {
+                    activeRate = r.rate;
+                } else {
+                    break;
+                }
+            }
+            return activeRate;
+        }
+        
+        async function createLoan(payload) {
+            const data = {
+                name: payload.name,
+                contact: payload.contact || '',
+                address: payload.address || '',
+                start: payload.start,
+                principal: Number(payload.principal),
+                outstanding: Number(payload.principal),
+                rate: Number(payload.rate),
+                method: payload.method,
+                period: payload.period,
+                tenorValue: Number(payload.tenorValue),
+                tenorUnit: payload.tenorUnit,
+                adminFee: Number(payload.adminFee) || 0,
+                savingsFee: Number(payload.savingsFee) || 0,
+                note: payload.note || '',
+                createdAt: serverTimestamp()
+            };
+
+            try {
+                if (payload.id) {
+                    await updateDoc(doc(db, 'loans', payload.id), data);
+                    await addDoc(collection(db, 'loans', payload.id, 'rates'), {
+                        date: payload.start,
+                        rate: Number(payload.rate),
+                        note: 'Perubahan bunga'
+                    });
+                    alert('Pinjaman berhasil diperbarui.');
+                } else {
+                    const docRef = await addDoc(collection(db, 'loans'), {
+                        ...data,
+                        status: 'active'
+                    });
+                    await addDoc(collection(db, 'loans', docRef.id, 'rates'), {
+                        date: payload.start,
+                        rate: Number(payload.rate),
+                        note: 'Bunga awal'
+                    });
+                    alert('Pinjaman tersimpan.');
+                }
+                $('#btn-create').textContent = 'Simpan Pinjaman';
+            } catch (e) {
+                alert('Terjadi kesalahan: ' + e.message);
+                console.error(e);
+            }
+        }
+
+        async function addPayment(loanId, { date, amount, note, type }) {
+            const loanRef = doc(db, 'loans', loanId);
+
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const loanSnap = await transaction.get(loanRef);
+                    if (!loanSnap.exists()) {
+                        throw "Pinjaman tidak ditemukan.";
+                    }
+                    const loan = loanSnap.data();
+
+                    const sortedPayments = (allLoans.find(l => l.id === loanId)?.payments || []).sort((a, b) => new Date(a.date) - new Date(b.date));
+                    const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : loan.start;
+
+                    let interestPaid = 0;
+                    let principalPaid = 0;
+                    let remaining = Number(amount);
+
+                    // Logika pembayaran
+                    if (type === 'both' || type === 'principal') {
+                        const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
+                        interestPaid = Math.min(remaining, interestAccrued);
+                        remaining -= interestPaid;
+                        principalPaid = remaining;
+                    } else if (type === 'interest') {
+                        interestPaid = remaining;
+                        principalPaid = 0;
+                    } else if (type === 'partial_principal') {
+                        principalPaid = remaining;
+                        interestPaid = 0;
+                    } else if (loan.method === 'fixed_installment') {
+                        // Logika untuk angsuran tetap (asumsi type 'both' atau 'principal')
+                        const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
+                        interestPaid = Math.min(remaining, interestAccrued);
+                        remaining -= interestPaid;
+                        principalPaid = remaining;
+                    }
+                    
+                    const newOutstanding = Math.max(0, loan.outstanding - principalPaid);
+                    const newStatus = newOutstanding <= 0 ? 'lunas' : 'active';
+
+                    const paymentDocRef = doc(collection(db, 'loans', loanId, 'payments'));
+                    transaction.set(paymentDocRef, {
+                        date,
+                        amount: Number(amount),
+                        interestPaid: interestPaid,
+                        principalPaid: principalPaid,
+                        note,
+                        createdAt: serverTimestamp()
+                    });
+
+                    transaction.update(loanRef, { outstanding: newOutstanding, status: newStatus });
+                    
+                    updatePaymentBreakdown(date, amount, interestPaid, principalPaid, newOutstanding, newStatus);
+                    alert(`Pembayaran berhasil. Bunga: Rp${fmt(interestPaid)}, Pokok: Rp${fmt(principalPaid)}`);
+                });
+            } catch (e) {
+                alert('Terjadi kesalahan saat mencatat pembayaran: ' + e);
+                console.error(e);
+            }
+        }
+
+        function updatePaymentBreakdown(date, amount, interestPaid, principalPaid, newOutstanding, newStatus) {
+            const breakdown = `
+RINCIAN PEMBAYARAN
+Tanggal: ${date}
+Nominal: Rp${fmt(amount)}
+Bunga Dibayar: Rp${fmt(interestPaid)}
+Pokok Dibayar: Rp${fmt(principalPaid)}
+Sisa Pokok: Rp${fmt(newOutstanding)}
+Status: ${newStatus.toUpperCase()}
+            `;
+            $('#p-breakdown').textContent = breakdown;
+            $('#p-breakdown').classList.remove('hidden');
+        }
+
+        function getDueDate(loan) {
+            const start = new Date(loan.start);
+            const due = new Date(start);
+            if (loan.tenorUnit === 'days') {
+                due.setDate(due.getDate() + loan.tenorValue);
+            } else if (loan.tenorUnit === 'months') {
+                due.setMonth(due.getMonth() + loan.tenorValue);
+            }
+            return toISO(due);
+        }
+
+        function refreshLoanOptions() {
+            const opts = allLoans.map(l => {
+                let info = `Sisa: Rp${fmt(l.outstanding)}`;
+                if (l.method === 'fixed_installment') {
+                    const totalPayment = calculateFixedInstallment(l.principal, l.rate, l.tenorValue, l.tenorUnit);
+                    info = `Sisa: Rp${fmt(l.outstanding)}, Angsuran: Rp${fmt(totalPayment)}`;
+                } else {
+                    const sortedPayments = [...l.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
+                    const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : l.start;
+                    const interestAccrued = calcInterestDue(l, lastPaymentDate, todayStr());
+                    info = `Sisa: Rp${fmt(l.outstanding)}, Bunga: Rp${fmt(interestAccrued)}`;
+                }
+                return `<option value="${l.id}">${l.name} — ${info}</option>`;
+            }).join('');
+            $('#p-loan').innerHTML = '<option value="">— pilih —</option>' + opts;
+            $('#r-loan').innerHTML = '<option value="">— pilih —</option>' + opts;
+        }
+
+        function refreshCustomerOptions() {
+            const seen = new Set();
+            const opts = [];
+            allLoans.forEach(l => {
+                if (!seen.has(l.name)) {
+                    seen.add(l.name);
+                    opts.push(`<option value="${l.name}">${l.name}</option>`);
+                }
+            });
+            $('#rep-customer').innerHTML = '<option value="">Semua Customer</option>' + opts.join('');
+        }
+
+        function renderList(loans) {
+            const q = ($('#search').value || '').toLowerCase();
+            const st = $('#filter-status').value;
+            const filtered = loans.filter(l => {
+                const matchQ = !q || l.name.toLowerCase().includes(q) || (l.contact||'').includes(q);
+                const matchS = st === 'all' || l.status === st;
+                return matchQ && matchS;
+            });
+
+            let rows = '';
+            for (const l of filtered) {
+                const lastPayDate = l.payments?.length > 0 ? l.payments[l.payments.length-1].date : l.start;
+                const accInt = calcInterestDue(l, lastPayDate, todayStr());
+                const totalPaid = l.payments?.reduce((s,p)=>s+p.amount,0) || 0;
+                const status = l.status === 'lunas' ? 'Lunas' : 'Aktif';
+                rows += `
+                    <tr data-id="${l.id}">
+                        <td><b>${l.name}</b><div class="muted small">${l.contact||''}</div></td>
+                        <td class="mono">Rp${fmt(l.outstanding)}</td>
+                        <td class="mono">Rp${fmt(accInt)}</td>
+                        <td class="mono">Rp${fmt(totalPaid)}</td>
+                        <td>${status}</td>
+                        <td>${getDueDate(l)}</td>
+                        <td>
+                            <button class="btn" onclick="editLoan('${l.id}');event.stopPropagation()">Edit</button>
+                            <button class="btn danger" onclick="deleteLoan('${l.id}');event.stopPropagation()">Hapus</button>
+                        </td>
+                    </tr>`;
+            }
+            $('#loan-rows').innerHTML = rows || '<tr><td colspan="7">Tidak ada data</td></tr>';
+
+            $$('#loan-rows tr').forEach(row => {
+                row.addEventListener('click', (e) => {
+                    const loanId = row.dataset.id;
+                    const loan = allLoans.find(l => l.id === loanId);
+                    if (loan) {
+                        let details = `
+Nama: ${loan.name}
+Pokok Awal: Rp${fmt(loan.principal)}
+Sisa Pokok: Rp${fmt(loan.outstanding)}
+Tingkat Bunga: ${rateAt(loan, todayStr())}% (${loan.period === 'daily' ? 'Harian' : 'Bulanan'})
+Tanggal Pinjam: ${loan.start}
+Jatuh Tempo: ${getDueDate(loan)}
+`;
+                        if (loan.adminFee > 0 || loan.savingsFee > 0) {
+                            details += `\nBiaya Admin: Rp${fmt(loan.adminFee)}\n`;
+                            details += `Biaya Tabungan: Rp${fmt(loan.savingsFee)}\n`;
+                            details += `Dana Diterima: Rp${fmt(loan.principal - loan.adminFee - loan.savingsFee)}\n`;
+                        }
+                        details += `Catatan: ${loan.note || '-'}\n`;
+                        alert('Detail Pinjaman:\n' + details);
+                    }
+                });
+            });
+        }
+
+        $('#btn-generate-report').addEventListener('click', () => {
+            const customer = $('#rep-customer').value;
+            const start = $('#rep-start').value;
+            const end = $('#rep-end').value;
+            
+            const reportTable = $('#report-table');
+            const reportBody = $('#report-body');
+            const reportOutput = $('#report-output');
+            const reportFooter = $('#report-footer');
+            reportOutput.classList.add('hidden');
+            reportTable.classList.add('hidden');
+            reportFooter.classList.add('hidden');
+            reportBody.innerHTML = '';
+            
+            if (!customer) {
+                let reportText = `LAPORAN PIUTANG\nPeriode: ${start} s/d ${end}\n\n`;
+                const filteredLoans = allLoans.filter(l => l.payments.some(p => p.date >= start && p.date <= end) || l.outstanding > 0);
+                
+                let totalNominal = 0;
+                let totalBunga = 0;
+                let totalPokok = 0;
+
+                filteredLoans.forEach(l => {
+                    const payments = l.payments.filter(p => p.date >= start && p.date <= end);
+                    const sum = payments.reduce((s, x) => s + x.amount, 0);
+                    const sumInterest = payments.reduce((s,x)=>s+x.interestPaid,0);
+                    const sumPrincipal = payments.reduce((s,x)=>s+x.principalPaid,0);
+                    
+                    reportText += `Nama: ${l.name}\n`;
+                    reportText += `Pokok Awal: Rp${fmt(l.principal)}\n`;
+                    reportText += `Sisa Pokok: Rp${fmt(l.outstanding)}\n`;
+                    if (l.adminFee > 0 || l.savingsFee > 0) {
+                        reportText += `Biaya Admin: Rp${fmt(l.adminFee)}\n`;
+                        reportText += `Biaya Tabungan: Rp${fmt(l.savingsFee)}\n`;
+                        reportText += `Dana Diterima: Rp${fmt(l.principal - l.adminFee - l.savingsFee)}\n`;
+                    }
+                    reportText += `Total Bayar Periode Ini: Rp${fmt(sum)} (Bunga: Rp${fmt(sumInterest)}, Pokok: Rp${fmt(sumPrincipal)})\n\n`;
+
+                    totalNominal += sum;
+                    totalBunga += sumInterest;
+                    totalPokok += sumPrincipal;
+                });
+                
+                reportText += `================================\n`;
+                reportText += `TOTAL KESELURUHAN:\n`;
+                reportText += `Jumlah Nominal: Rp${fmt(totalNominal)}\n`;
+                reportText += `Jumlah Bunga Dibayar: Rp${fmt(totalBunga)}\n`;
+                reportText += `Jumlah Pokok Dibayar: Rp${fmt(totalPokok)}\n`;
+
+                reportOutput.textContent = reportText;
+                reportOutput.classList.remove('hidden');
+            } else {
+                const loan = allLoans.find(l => l.name === customer);
+                if (!loan) {
+                    reportOutput.textContent = 'Customer tidak ditemukan.';
+                    reportOutput.classList.add('hidden');
+                    return;
+                }
+
+                const payments = loan.payments.filter(p => p.date >= start && p.date <= end).sort((a,b) => new Date(a.date) - new Date(b.date));
+                
+                let reportText = `LAPORAN PIUTANG UNTUK ${loan.name}\n\n`;
+                reportText += `Pokok Awal: Rp${fmt(loan.principal)}\n`;
+                if (loan.adminFee > 0 || loan.savingsFee > 0) {
+                    reportText += `Biaya Admin: Rp${fmt(loan.adminFee)}\n`;
+                    reportText += `Biaya Tabungan: Rp${fmt(loan.savingsFee)}\n`;
+                    reportText += `Dana Diterima: Rp${fmt(loan.principal - loan.adminFee - loan.savingsFee)}\n`;
+                }
+                reportText += `Sisa Pokok: Rp${fmt(loan.outstanding)}\n`;
+                reportText += `Total Bunga Terutang: Rp${fmt(calcInterestDue(loan, loan.start, end))}\n`;
+                reportText += `Periode Laporan: ${start} s/d ${end}\n\n`;
+                reportOutput.textContent = reportText;
+                reportOutput.classList.remove('hidden');
+
+                if (payments.length) {
+                    reportTable.classList.remove('hidden');
+                    reportFooter.classList.remove('hidden');
+                    let tempOutstanding = loan.principal;
+                    const allLoanPayments = allLoans.find(l=>l.id===loan.id)?.payments || [];
+
+                    for(const p of allLoanPayments) {
+                        if(p.date < start) {
+                            tempOutstanding -= p.principalPaid;
+                        }
+                    }
+
+                    let totalAmount = 0;
+                    let totalInterestPaid = 0;
+                    let totalPrincipalPaid = 0;
+
+                    payments.forEach(p => {
+                        const newOutstanding = tempOutstanding - p.principalPaid;
+                        const row = `
+                        <tr>
+                            <td>${p.date}</td>
+                            <td class="mono">Rp${fmt(p.amount)}</td>
+                            <td class="mono">Rp${fmt(p.interestPaid)}</td>
+                            <td class="mono">Rp${fmt(p.principalPaid)}</td>
+                            <td class="mono">Rp${fmt(newOutstanding)}</td>
+                            <td>${p.note || '-'}</td>
+                        </tr>
+                        `;
+                        reportBody.innerHTML += row;
+                        tempOutstanding = newOutstanding;
+
+                        totalAmount += p.amount;
+                        totalInterestPaid += p.interestPaid;
+                        totalPrincipalPaid += p.principalPaid;
+                    });
+                    
+                    $('#total-amount').textContent = `Rp${fmt(totalAmount)}`;
+                    $('#total-interest').textContent = `Rp${fmt(totalInterestPaid)}`;
+                    $('#total-principal').textContent = `Rp${fmt(totalPrincipalPaid)}`;
+
+                } else {
+                    reportOutput.textContent = 'Tidak ada pembayaran dalam periode ini.';
+                    reportOutput.classList.remove('hidden');
+                    reportTable.classList.add('hidden');
+                    reportFooter.classList.add('hidden');
+                }
+            }
+        });
+
+        $('#btn-share-wa').addEventListener('click', () => {
+            const reportText = $('#report-output').textContent;
+            const reportBody = $('#report-body');
+            let fullReport = reportText;
+            if (reportBody.innerHTML) {
+                fullReport += "RINCIAN PEMBAYARAN:\n\n";
+                Array.from(reportBody.rows).forEach(row => {
+                    const cells = Array.from(row.cells).map(cell => cell.textContent);
+                    fullReport += `Tgl: ${cells[0]}, Nominal: ${cells[1]}, Bunga: ${cells[2]}, Pokok: ${cells[3]}\n`;
+                });
+                const totalCells = Array.from($('#report-footer').rows[0].cells).map(cell => cell.textContent);
+                fullReport += `\nTOTAL: Nominal: ${totalCells[1]}, Bunga: ${totalCells[2]}, Pokok: ${totalCells[3]}`;
+            }
+
+            if (!fullReport.trim()) {
+                alert('Buat laporan dulu!');
+                return;
+            }
+            window.open(waLink('', fullReport), '_blank');
+        });
+
+        $('#btn-download-pdf').addEventListener('click', () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(18);
+            doc.text("Laporan Piutang", 14, 20);
+            doc.setFontSize(12);
+            const start = $('#rep-start').value;
+            const end = $('#rep-end').value;
+            const customer = $('#rep-customer').value;
+
+            let titleText = `Periode: ${start} s/d ${end}`;
+            if (customer) {
+                const loan = allLoans.find(l => l.name === customer);
+                titleText += `\nCustomer: ${loan.name}`;
+            }
+            doc.text(titleText, 14, 28);
+            
+            if (customer) {
+                doc.autoTable({
+                    startY: 40,
+                    head: [['Tanggal', 'Nominal', 'Bunga Dibayar', 'Pokok Dibayar', 'Sisa Pokok', 'Catatan']],
+                    body: Array.from($('#report-body').rows).map(row => Array.from(row.cells).map(cell => cell.textContent)),
+                    foot: [['Total', $('#total-amount').textContent, $('#total-interest').textContent, $('#total-principal').textContent, '', '']],
+                });
+            } else {
+                doc.text($('#report-output').textContent, 14, 35, { maxWidth: 180 });
+            }
+
+            doc.save("Laporan-Piutang.pdf");
+        });
+
+        window.editLoan = async function(id) {
+            const loan = allLoans.find(l => l.id === id);
+            if (!loan) return;
+            $('#c-name').value = loan.name;
+            $('#c-contact').value = loan.contact;
+            $('#c-address').value = loan.address;
+            $('#c-start').value = loan.start;
+            $('#c-principal').value = loan.principal;
+            $('#c-rate').value = rateAt(loan, todayStr());
+            $('#c-period').value = loan.period;
+            $('#c-tenor-value').value = loan.tenorValue;
+            $('#c-tenor-unit').value = loan.tenorUnit;
+            $('#c-method').value = loan.method;
+            $('#c-admin-fee').value = loan.adminFee || 0;
+            $('#c-savings-fee').value = loan.savingsFee || 0;
+            $('#c-note').value = loan.note;
+            $('#btn-create').textContent = 'Perbarui Pinjaman';
+            $('#btn-create').onclick = () => createLoan({
+                id, name: $('#c-name').value, contact: $('#c-contact').value, address: $('#c-address').value,
+                start: $('#c-start').value, principal: $('#c-principal').value, rate: $('#c-rate').value,
+                period: $('#c-period').value, tenorValue: $('#c-tenor-value').value, tenorUnit: $('#c-tenor-unit').value,
+                method: $('#c-method').value, adminFee: $('#c-admin-fee').value, savingsFee: $('#c-savings-fee').value, note: $('#c-note').value
+            });
+            document.querySelector('[data-tab="create"]').click();
+        };
+
+        window.deleteLoan = async function(id) {
+            if (confirm('Hapus pinjaman ini?')) {
+                await deleteDoc(doc(db, 'loans', id));
+                alert('Pinjaman dihapus.');
+            }
+        };
+
+        $('#btn-create').onclick = () => {
+            const name = $('#c-name').value;
+            const principal = $('#c-principal').value;
+            if (!name || !principal) return alert('Isi nama dan jumlah');
+            createLoan({
+                name, contact: $('#c-contact').value, address: $('#c-address').value,
+                start: $('#c-start').value, principal, rate: $('#c-rate').value,
+                period: $('#c-period').value, tenorValue: $('#c-tenor-value').value, tenorUnit: $('#c-tenor-unit').value,
+                method: $('#c-method').value, adminFee: $('#c-admin-fee').value, savingsFee: $('#c-savings-fee').value, note: $('#c-note').value
+            });
+        };
+
+        $('#btn-pay').onclick = () => {
+            const id = $('#p-loan').value;
+            const loan = allLoans.find(l => l.id === id);
+            if (!id) return alert('Pilih pinjaman');
+            
+            let amount;
+            let type = $('#p-type').value;
+
+            if (loan.method === 'fixed_installment' && type !== 'partial_principal') {
+                amount = calculateFixedInstallment(loan.principal, loan.rate, loan.tenorValue, loan.tenorUnit);
+            } else {
+                amount = $('#p-amount').value;
+                if (!amount) return alert('Masukkan nominal pembayaran');
+            }
+            
+            addPayment(id, {
+                date: $('#p-date').value,
+                amount,
+                note: $('#p-note').value,
+                type
+            });
+        };
+        
+        $('#btn-full-pay').onclick = async () => {
+            const id = $('#p-loan').value;
+            const payDate = $('#p-date').value;
+            if (!id || !payDate) return alert('Pilih pinjaman & tanggal');
+            
+            const loan = allLoans.find(l => l.id === id);
+            if (!loan) return;
+            
+            const totalAmount = calculateFullPaymentAmount(id, payDate);
+            if (confirm(`Total pelunasan adalah Rp${fmt(totalAmount)}. Lanjutkan?`)) {
+                await addPayment(id, {
+                    date: payDate,
+                    amount: totalAmount,
+                    note: 'Pelunasan Dipercepat',
+                    type: 'both' // Tipe pembayaran pokok dan bunga
+                });
+            }
+        };
+
+        $('#btn-rate').onclick = async () => {
+            const id = $('#r-loan').value;
+            if (!id || !$('#r-rate').value) return alert('Lengkapi data');
+            try {
+                await addDoc(collection(db, 'loans', id, 'rates'), {
+                    date: $('#r-date').value,
+                    rate: Number($('#r-rate').value),
+                    note: $('#r-note').value
+                });
+                await updateDoc(doc(db, 'loans', id), {
+                    rate: Number($('#r-rate').value)
+                });
+                alert('Bunga diubah');
+            } catch (e) {
+                alert('Terjadi kesalahan: ' + e.message);
+            }
+        };
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+        }
+    </script>
+</body>
+</html>
