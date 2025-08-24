@@ -478,41 +478,33 @@
       $('#stat-payments').textContent = totalPaymentsCount;
     }
 
-    // ===== PERHITUNGAN BUNGA DENGAN HARIAN & BULANAN (REVISI) =====
+    // ===== PERBAIKAN LOGIKA PERHITUNGAN BUNGA =====
     function calcInterestDue(loan, fromDate, toDate) {
       if (!loan || loan.outstanding <= 0 || !fromDate || !toDate) return 0;
+
       let totalInterest = 0;
       const from = new Date(fromDate);
       const to = new Date(toDate);
       if (to <= from) return 0;
 
       const oneDay = 1000 * 60 * 60 * 24;
-      const daysDiff = (to.getTime() - from.getTime()) / oneDay;
-
       let currentDate = new Date(from);
-      let remainingDays = daysDiff;
 
-      while (remainingDays > 0) {
-          const rate = rateAt(loan, toISO(currentDate));
-          if (rate <= 0) {
-              currentDate.setDate(currentDate.getDate() + 1);
-              remainingDays--;
-              continue;
-          }
-
+      while (currentDate < to) {
+        const rate = rateAt(loan, toISO(currentDate));
+        if (rate > 0) {
           const dailyRate = rate / 100 / (loan.period === 'monthly' ? 30 : 1);
           totalInterest += loan.outstanding * dailyRate;
-          currentDate.setDate(currentDate.getDate() + 1);
-          remainingDays--;
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
       }
-
       return Math.round(totalInterest);
     }
 
     function rateAt(loan, date) {
-      if (!loan.rateHistory || loan.rateHistory.length === 0) return loan.rate || 0;
+      if (!loan.rateHistory || loan.rateHistory.length === 0) return 0;
       const history = [...loan.rateHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
-      let activeRate = history[0].rate;
+      let activeRate = 0;
       for (const r of history) {
         if (new Date(r.date) <= new Date(date)) {
           activeRate = r.rate;
@@ -555,7 +547,7 @@
       $('#btn-create').textContent = 'Simpan Pinjaman';
     }
 
-    // ===== LOGIKA PEMBAYARAN BARU =====
+    // ===== PERBAIKAN LOGIKA PEMBAYARAN & PENYIMPANAN DATA =====
     async function addPayment(loanId, { date, amount, note, type }) {
       const loanRef = doc(db, 'loans', loanId);
       const loanSnap = await getDoc(loanRef);
@@ -683,13 +675,11 @@ Status: ${newStatus.toUpperCase()}
       }
       $('#loan-rows').innerHTML = rows || '<tr><td colspan="7">Tidak ada data</td></tr>';
 
-      // Attach click event listener to each row
       $$('#loan-rows tr').forEach(row => {
         row.addEventListener('click', (e) => {
           const loanId = row.dataset.id;
           const loan = allLoans.find(l => l.id === loanId);
           if (loan) {
-            // Tampilkan detail di sini
             let details = `
               Nama: ${loan.name}
               Pokok Awal: Rp${fmt(loan.principal)}
@@ -724,11 +714,13 @@ Status: ${newStatus.toUpperCase()}
           const payments = l.payments.filter(p => p.date >= start && p.date <= end);
           const sum = payments.reduce((s, x) => s + x.amount, 0);
           const sumInterest = payments.reduce((s,x)=>s+x.interestPaid,0);
+          const sumPrincipal = payments.reduce((s,x)=>s+x.principalPaid,0);
+          
           if (sum > 0 || l.outstanding > 0) {
             reportText += `Nama: ${l.name}\n`;
             reportText += `Pokok Awal: Rp${fmt(l.principal)}\n`;
             reportText += `Sisa Pokok: Rp${fmt(l.outstanding)}\n`;
-            reportText += `Total Bayar: Rp${fmt(sum)} (Bunga: Rp${fmt(sumInterest)}, Pokok: Rp${fmt(sum - sumInterest)})\n\n`;
+            reportText += `Total Bayar Periode Ini: Rp${fmt(sum)} (Bunga: Rp${fmt(sumInterest)}, Pokok: Rp${fmt(sumPrincipal)})\n\n`;
           }
         });
         reportOutput.textContent = reportText;
@@ -753,14 +745,19 @@ Status: ${newStatus.toUpperCase()}
 
         if (payments.length) {
           reportTable.classList.remove('hidden');
+          let currentOutstanding = loan.outstanding;
           payments.forEach(p => {
-            const row = `
+            currentOutstanding = currentOutstanding + p.principalPaid;
+          });
+          
+          payments.forEach(p => {
+             const row = `
               <tr>
                 <td>${p.date}</td>
                 <td class="mono">Rp${fmt(p.amount)}</td>
                 <td class="mono">Rp${fmt(p.interestPaid)}</td>
                 <td class="mono">Rp${fmt(p.principalPaid)}</td>
-                <td class="mono">Rp${fmt(loan.outstanding + p.principalPaid)}</td>
+                <td class="mono">Rp${fmt(loan.outstanding - p.principalPaid)}</td>
                 <td>${p.note || '-'}</td>
               </tr>
             `;
