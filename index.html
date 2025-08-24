@@ -610,6 +610,7 @@
             return outstandingPrincipal + interestDue;
         }
 
+        // Perbaikan: Variabel all-l-o-a-n-s diganti menjadi allLoans
         function loadDashboard() {
             const total = allLoans.reduce((s, l) => s + l.principal, 0);
             const outstanding = allLoans.reduce((s, l) => s + l.outstanding, 0);
@@ -657,7 +658,7 @@
             }
             return activeRate;
         }
-        
+
         async function createLoan(payload) {
             const data = {
                 name: payload.name,
