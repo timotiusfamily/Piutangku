@@ -376,7 +376,18 @@
         const $ = s => document.querySelector(s);
         const $$ = s => Array.from(document.querySelectorAll(s));
         const todayStr = () => new Date().toISOString().slice(0,10);
-        const toISO = d => new Date(d).toISOString().slice(0,10);
+        
+        const toISO = d => {
+            try {
+                if (!d) return null;
+                const date = new Date(d);
+                if (isNaN(date.getTime())) return null;
+                return date.toISOString().slice(0,10);
+            } catch (e) {
+                console.error("Error parsing date:", e);
+                return null;
+            }
+        };
         const fmt = n => Number(n||0).toLocaleString('id-ID');
         function waLink(number, text){ return `https://wa.me/${number}?text=${encodeURIComponent(text)}`; }
 
@@ -423,9 +434,6 @@
                 Object.values(views).forEach(v => v.hidden = true);
                 views[t.dataset.tab].hidden = false;
                 t.scrollIntoView({ behavior: 'smooth', inline: 'center' });
-                if (t.dataset.tab === 'pay') refreshLoanOptions();
-                if (t.dataset.tab === 'rates') refreshLoanOptions();
-                if (t.dataset.tab === 'reports') refreshCustomerOptions();
             }));
 
             views.dashboard.hidden = false;
@@ -450,20 +458,24 @@
                 renderList(allLoans);
             });
 
-            $('#p-loan').addEventListener('change', (e) => {
-                const loanId = e.target.value;
-                if (loanId) {
-                    const loan = allLoans.find(l => l.id === loanId);
-                    if (loan) {
-                        const sortedPayments = [...loan.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
-                        const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : loan.start;
-                        const interestAccrued = calcInterestDue(loan, lastPaymentDate, todayStr());
-                        $('#p-dueinfo').textContent = `Bunga terutang sampai hari ini: Rp${fmt(interestAccrued)}`;
-                    }
-                } else {
-                    $('#p-dueinfo').textContent = '—';
+            $('#p-loan').addEventListener('change', updatePaymentDueInfo);
+            $('#p-date').addEventListener('change', updatePaymentDueInfo);
+        }
+        
+        function updatePaymentDueInfo() {
+            const loanId = $('#p-loan').value;
+            const payDate = $('#p-date').value;
+            if (loanId && payDate) {
+                const loan = allLoans.find(l => l.id === loanId);
+                if (loan) {
+                    const sortedPayments = [...loan.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
+                    const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : loan.start;
+                    const interestAccrued = calcInterestDue(loan, lastPaymentDate, payDate);
+                    $('#p-dueinfo').textContent = `Bunga terutang sampai hari ini: Rp${fmt(interestAccrued)}`;
                 }
-            });
+            } else {
+                $('#p-dueinfo').textContent = '—';
+            }
         }
 
         function loadDashboard() {
@@ -478,21 +490,22 @@
             $('#stat-payments').textContent = totalPaymentsCount;
         }
 
-        // ===== PERBAIKAN LOGIKA PERHITUNGAN BUNGA =====
         function calcInterestDue(loan, fromDate, toDate) {
-            if (!loan || !loan.outstanding || loan.outstanding <= 0 || !fromDate || !toDate) return 0;
-
-            let totalInterest = 0;
+            if (!loan || loan.principal <= 0 || !fromDate || !toDate) return 0;
+            
             const from = new Date(fromDate);
             const to = new Date(toDate);
-            if (to <= from) return 0;
+            
+            if (to < from) return 0;
 
+            let totalInterest = 0;
             let currentDate = new Date(from);
-            while (currentDate <= to) {
+            
+            while (currentDate.toISOString().slice(0,10) <= toDate) {
                 const rate = rateAt(loan, toISO(currentDate));
                 if (rate > 0) {
                     const dailyRate = rate / 100 / (loan.period === 'monthly' ? 30 : 1);
-                    totalInterest += loan.outstanding * dailyRate;
+                    totalInterest += loan.principal * dailyRate;
                 }
                 currentDate.setDate(currentDate.getDate() + 1);
             }
@@ -506,7 +519,9 @@
             for (const r of history) {
                 if (new Date(r.date) <= new Date(date)) {
                     activeRate = r.rate;
-                } else break;
+                } else {
+                    break;
+                }
             }
             return activeRate;
         }
@@ -519,7 +534,7 @@
                 start: payload.start,
                 principal: Number(payload.principal),
                 outstanding: Number(payload.principal),
-                rate: Number(payload.rate), // ADDED: Save initial rate directly
+                rate: Number(payload.rate),
                 method: payload.method,
                 period: payload.period,
                 tenorValue: Number(payload.tenorValue),
@@ -556,8 +571,7 @@
             }
         }
 
-
-        // ===== PERBAIKAN LOGIKA PEMBAYARAN & PENYIMPANAN DATA =====
+        // Perbaikan logika pembayaran
         async function addPayment(loanId, { date, amount, note, type }) {
             const loanRef = doc(db, 'loans', loanId);
             
@@ -578,13 +592,13 @@
                     let remaining = Number(amount);
 
                     if (type === 'interest') {
-                        interestPaid = Math.min(remaining, interestAccrued);
+                        interestPaid = remaining;
                     } else if (type === 'principal') {
-                        principalPaid = Math.min(remaining, loan.outstanding);
+                        principalPaid = remaining;
                     } else { // type === 'both'
                         interestPaid = Math.min(remaining, interestAccrued);
                         remaining -= interestPaid;
-                        principalPaid = Math.min(remaining, loan.outstanding);
+                        principalPaid = remaining;
                     }
                     
                     const newOutstanding = Math.max(0, loan.outstanding - principalPaid);
@@ -724,7 +738,6 @@ Catatan: ${loan.note || '-'}
             reportBody.innerHTML = '';
             
             if (!customer) {
-                // Laporan ringkasan
                 let reportText = `LAPORAN PIUTANG\nPeriode: ${start} s/d ${end}\n\n`;
                 const filteredLoans = allLoans.filter(l => l.payments.some(p => p.date >= start && p.date <= end) || l.outstanding > 0);
                 
@@ -742,11 +755,10 @@ Catatan: ${loan.note || '-'}
                 reportOutput.textContent = reportText;
                 reportOutput.classList.remove('hidden');
             } else {
-                // Laporan per customer
                 const loan = allLoans.find(l => l.name === customer);
                 if (!loan) {
                     reportOutput.textContent = 'Customer tidak ditemukan.';
-                    reportOutput.classList.remove('hidden');
+                    reportOutput.classList.add('hidden');
                     return;
                 }
 
