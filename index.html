@@ -487,9 +487,7 @@
       const to = new Date(toDate);
       if (to <= from) return 0;
 
-      const oneDay = 1000 * 60 * 60 * 24;
       let currentDate = new Date(from);
-
       while (currentDate < to) {
         const rate = rateAt(loan, toISO(currentDate));
         if (rate > 0) {
@@ -746,9 +744,6 @@ Status: ${newStatus.toUpperCase()}
         if (payments.length) {
           reportTable.classList.remove('hidden');
           let currentOutstanding = loan.outstanding;
-          payments.forEach(p => {
-            currentOutstanding = currentOutstanding + p.principalPaid;
-          });
           
           payments.forEach(p => {
              const row = `
