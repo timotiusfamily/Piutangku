@@ -234,7 +234,11 @@
                                 <select id="c-tenor-unit"><option value="days">Hari</option><option value="months">Bulan</option></select>
                             </div>
                         </div>
-                        <div><label>Metode</label><select id="c-method"><option value="interest_only">Bunga Saja</option><option value="principal_interest">Pokok + Bunga</option></select></div>
+                        <div><label>Metode</label><select id="c-method"><option value="interest_only">Bunga Saja</option><option value="principal_interest">Pokok + Bunga</option><option value="fixed_installment">Angsuran Tetap</option><option value="interest_only_decreasing">Bunga Menurun</option></select></div>
+                        <div id="c-fees" class="hidden" style="grid-column:1/-1; display:flex; gap:12px;">
+                            <div style="flex:1;"><label>Biaya Admin (Rp)</label><input id="c-admin-fee" type="number" value="0" /></div>
+                            <div style="flex:1;"><label>Biaya Tabungan (Rp)</label><input id="c-savings-fee" type="number" value="0" /></div>
+                        </div>
                         <div style="grid-column:1/-1"><label>Catatan</label><textarea id="c-note"></textarea></div>
                     </div>
                     <div style="margin-top:16px" class="stack">
@@ -250,13 +254,19 @@
                     <div class="grid g3">
                         <div><label>Pilih Pinjaman</label><select id="p-loan"></select></div>
                         <div><label>Tanggal Bayar</label><input id="p-date" type="date" /></div>
-                        <div><label>Nominal (Rp)</label><input id="p-amount" type="number" /></div>
-                        <div><label>Jenis</label><select id="p-type"><option value="both">Bunga & Pokok</option><option value="interest">Bunga Saja</option><option value="principal">Pokok Saja</option></select></div>
+                        <div id="p-amount-div"><label>Nominal (Rp)</label><input id="p-amount" type="number" /></div>
+                        <div><label>Jenis</label><select id="p-type">
+                            <option value="both">Bunga & Pokok</option>
+                            <option value="interest">Bunga Saja</option>
+                            <option value="principal">Pokok Saja</option>
+                            <option value="partial_principal">Bayar Pokok Sebagian</option>
+                        </select></div>
                         <div><label>Catatan</label><input id="p-note" /></div>
                         <div style="grid-column:1/-1" class="small muted" id="p-dueinfo">—</div>
                     </div>
                     <div style="margin-top:16px" class="stack">
                         <button class="btn success" id="btn-pay">Catat Pembayaran</button>
+                        <button class="btn primary hidden" id="btn-full-pay">Pelunasan Dipercepat</button>
                         <pre id="p-breakdown" class="small muted hidden" style="background: #f8fafc; padding: 12px; border-radius: 8px;"></pre>
                     </div>
                 </div>
@@ -283,7 +293,7 @@
                 <div class="content">
                     <div class="report-section">
                         <div><label>Customer</label><select id="rep-customer"><option value="">Semua</option></select></div>
-                        <div><label>Dari Tanggal</label><input id="rep-start" type="date" /></div>
+                        <div><label>Dari Tanggal</slabel><input id="rep-start" type="date" /></div>
                         <div><label>Sampai Tanggal</label><input id="rep-end" type="date" /></div>
                         <div style="grid-column:1/-1"><button class="btn primary" id="btn-generate-report">Tampilkan</button></div>
                     </div>
@@ -451,6 +461,31 @@
 
             $('#c-start').value = $('#p-date').value = $('#r-date').value = todayStr();
             $('#rep-start').value = $('#rep-end').value = todayStr();
+            
+            // Event listener untuk mode angsuran
+            $('#c-method').addEventListener('change', (e) => {
+                const method = e.target.value;
+                if (method === 'fixed_installment' || method === 'interest_only_decreasing') {
+                    $('#c-fees').classList.remove('hidden');
+                } else {
+                    $('#c-fees').classList.add('hidden');
+                }
+            });
+            
+            $('#p-type').addEventListener('change', (e) => {
+                const loanId = $('#p-loan').value;
+                const loan = allLoans.find(l => l.id === loanId);
+                const isFixedInstallment = loan?.method === 'fixed_installment';
+                const isInterestOnlyDecreasing = loan?.method === 'interest_only_decreasing';
+
+                if (isFixedInstallment && (e.target.value === 'both' || e.target.value === 'principal')) {
+                    $('#p-amount-div').classList.add('hidden');
+                } else if (isInterestOnlyDecreasing && e.target.value === 'interest') {
+                    $('#p-amount-div').classList.add('hidden');
+                } else {
+                    $('#p-amount-div').classList.remove('hidden');
+                }
+            });
 
             onSnapshot(collection(db, 'loans'), async (snap) => {
                 allLoans = await Promise.all(snap.docs.map(async d => {
@@ -474,17 +509,105 @@
         function updatePaymentDueInfo() {
             const loanId = $('#p-loan').value;
             const payDate = $('#p-date').value;
-            if (loanId && payDate) {
-                const loan = allLoans.find(l => l.id === loanId);
-                if (loan) {
+            const loan = allLoans.find(l => l.id === loanId);
+            
+            if (loanId && payDate && loan) {
+                const paymentType = $('#p-type').value;
+                
+                if (loan.method === 'fixed_installment') {
+                    if (paymentType === 'both' || paymentType === 'principal') {
+                         $('#p-amount-div').classList.add('hidden');
+                    } else {
+                         $('#p-amount-div').classList.remove('hidden');
+                    }
+
+                    let totalPayment;
+                    if (loan.period === 'monthly') {
+                        totalPayment = calculateFixedInstallmentMonthly(loan.principal, loan.rate, loan.tenorValue);
+                        $('#p-dueinfo').textContent = `Angsuran tetap per bulan: Rp${fmt(totalPayment)}`;
+                    } else {
+                        totalPayment = calculateFixedInstallment(loan.principal, loan.rate, loan.tenorValue, loan.tenorUnit);
+                        $('#p-dueinfo').textContent = `Angsuran tetap per hari: Rp${fmt(totalPayment)}`;
+                    }
+                    
+                    $('#btn-full-pay').classList.remove('hidden');
+                } else if (loan.method === 'interest_only_decreasing') {
+                    if (paymentType === 'interest') {
+                        const interestAccrued = calcInterestFromOutstanding(loan, payDate);
+                        $('#p-dueinfo').textContent = `Bunga bulan ini: Rp${fmt(interestAccrued)}`;
+                        $('#p-amount-div').classList.add('hidden');
+                    } else {
+                         const interestAccrued = calcInterestFromOutstanding(loan, payDate);
+                         $('#p-dueinfo').textContent = `Bunga bulan ini: Rp${fmt(interestAccrued)}`;
+                         $('#p-amount-div').classList.remove('hidden');
+                    }
+                    $('#btn-full-pay').classList.add('hidden');
+                } else {
                     const sortedPayments = [...loan.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
                     const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : loan.start;
                     const interestAccrued = calcInterestDue(loan, lastPaymentDate, payDate);
                     $('#p-dueinfo').textContent = `Bunga terutang sampai hari ini: Rp${fmt(interestAccrued)}`;
+                    $('#p-amount-div').classList.remove('hidden');
+                    $('#btn-full-pay').classList.add('hidden');
                 }
             } else {
                 $('#p-dueinfo').textContent = '—';
+                $('#p-amount-div').classList.remove('hidden');
+                $('#btn-full-pay').classList.add('hidden');
             }
+        }
+
+        // Fungsi baru untuk menghitung bunga dari sisa pokok
+        function calcInterestFromOutstanding(loan, payDate) {
+            const lastPaymentDate = loan.payments.length > 0 ? loan.payments[loan.payments.length - 1].date : loan.start;
+            const outstandingPrincipal = loan.outstanding;
+            const rate = rateAt(loan, payDate);
+            
+            let totalInterest = 0;
+            if (loan.period === 'monthly') {
+                totalInterest = outstandingPrincipal * (rate / 100);
+            } else {
+                const diffDays = Math.ceil((new Date(payDate) - new Date(lastPaymentDate)) / (1000 * 60 * 60 * 24));
+                const i_daily = (rate / 100) / 30;
+                totalInterest = outstandingPrincipal * i_daily * diffDays;
+            }
+            return Math.round(totalInterest);
+        }
+        
+        function calculateFixedInstallment(principal, rate, tenorValue, tenorUnit) {
+            const N = tenorUnit === 'days' ? tenorValue : tenorValue * 30;
+            const i_daily = (rate / 100) / 30;
+
+            if (i_daily === 0) return principal / N;
+            const installment = (principal * i_daily) / (1 - Math.pow(1 + i_daily, -N));
+            return Math.round(installment);
+        }
+        
+        function calculateFixedInstallmentMonthly(principal, rate, tenorValue) {
+            const r_monthly = (rate / 100);
+            const n_months = tenorValue;
+
+            if (r_monthly === 0) return principal / n_months;
+            const installment = (principal * r_monthly) / (1 - Math.pow(1 + r_monthly, -n_months));
+            return Math.round(installment);
+        }
+
+        function calculateFullPaymentAmount(loanId, payDate) {
+            const loan = allLoans.find(l => l.id === loanId);
+            if (!loan) return 0;
+            
+            let outstandingPrincipal = loan.outstanding;
+            let lastPaymentDate = loan.start;
+            
+            const sortedPayments = [...loan.payments].sort((a,b) => new Date(a.date) - new Date(b.date));
+            for (const payment of sortedPayments) {
+                if (new Date(payment.date) <= new Date(payDate)) {
+                    lastPaymentDate = payment.date;
+                }
+            }
+            
+            const interestDue = calcInterestDue(loan, lastPaymentDate, payDate);
+            return outstandingPrincipal + interestDue;
         }
 
         function loadDashboard() {
@@ -500,7 +623,7 @@
         }
 
         function calcInterestDue(loan, fromDate, toDate) {
-            if (!loan || loan.principal <= 0 || !fromDate || !toDate) return 0;
+            if (!loan || !loan.outstanding || !fromDate || !toDate) return 0;
             
             const from = new Date(fromDate);
             const to = new Date(toDate);
@@ -514,7 +637,7 @@
                 const rate = rateAt(loan, toISO(currentDate));
                 if (rate > 0) {
                     const dailyRate = rate / 100 / (loan.period === 'monthly' ? 30 : 1);
-                    totalInterest += loan.principal * dailyRate;
+                    totalInterest += loan.outstanding * dailyRate;
                 }
                 currentDate.setDate(currentDate.getDate() + 1);
             }
@@ -548,6 +671,8 @@
                 period: payload.period,
                 tenorValue: Number(payload.tenorValue),
                 tenorUnit: payload.tenorUnit,
+                adminFee: Number(payload.adminFee) || 0,
+                savingsFee: Number(payload.savingsFee) || 0,
                 note: payload.note || '',
                 createdAt: serverTimestamp()
             };
@@ -582,7 +707,7 @@
 
         async function addPayment(loanId, { date, amount, note, type }) {
             const loanRef = doc(db, 'loans', loanId);
-            
+
             try {
                 await runTransaction(db, async (transaction) => {
                     const loanSnap = await transaction.get(loanRef);
@@ -594,19 +719,49 @@
                     const sortedPayments = (allLoans.find(l => l.id === loanId)?.payments || []).sort((a, b) => new Date(a.date) - new Date(b.date));
                     const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : loan.start;
 
-                    const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
                     let interestPaid = 0;
                     let principalPaid = 0;
                     let remaining = Number(amount);
-
-                    if (type === 'interest') {
-                        interestPaid = remaining;
-                    } else if (type === 'principal') {
-                        principalPaid = remaining;
-                    } else { // type === 'both'
-                        interestPaid = Math.min(remaining, interestAccrued);
-                        remaining -= interestPaid;
-                        principalPaid = remaining;
+                    
+                    if (loan.method === 'interest_only_decreasing') {
+                        if (type === 'interest') {
+                            interestPaid = remaining;
+                            principalPaid = 0;
+                        } else if (type === 'both' || type === 'principal') {
+                             const interestAccrued = calcInterestFromOutstanding(loan, date);
+                             interestPaid = Math.min(remaining, interestAccrued);
+                             remaining -= interestPaid;
+                             principalPaid = remaining;
+                        } else if (type === 'partial_principal') {
+                            principalPaid = remaining;
+                            interestPaid = 0;
+                        }
+                    } else if (loan.method === 'fixed_installment') {
+                        if (type === 'both' || type === 'principal') {
+                            const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
+                            interestPaid = Math.min(remaining, interestAccrued);
+                            remaining -= interestPaid;
+                            principalPaid = remaining;
+                        } else if (type === 'interest') {
+                            interestPaid = remaining;
+                            principalPaid = 0;
+                        } else if (type === 'partial_principal') {
+                            principalPaid = remaining;
+                            interestPaid = 0;
+                        }
+                    } else { // Untuk pinjaman non-angsuran
+                        if (type === 'both' || type === 'principal') {
+                            const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
+                            interestPaid = Math.min(remaining, interestAccrued);
+                            remaining -= interestPaid;
+                            principalPaid = remaining;
+                        } else if (type === 'interest') {
+                            interestPaid = remaining;
+                            principalPaid = 0;
+                        } else if (type === 'partial_principal') {
+                            principalPaid = remaining;
+                            interestPaid = 0;
+                        }
                     }
                     
                     const newOutstanding = Math.max(0, loan.outstanding - principalPaid);
@@ -624,7 +779,7 @@
 
                     transaction.update(loanRef, { outstanding: newOutstanding, status: newStatus });
                     
-                    updatePaymentBreakdown(date, amount, interestAccrued, interestPaid, principalPaid, newOutstanding, newStatus);
+                    updatePaymentBreakdown(date, amount, interestPaid, principalPaid, newOutstanding, newStatus);
                     alert(`Pembayaran berhasil. Bunga: Rp${fmt(interestPaid)}, Pokok: Rp${fmt(principalPaid)}`);
                 });
             } catch (e) {
@@ -633,12 +788,11 @@
             }
         }
 
-        function updatePaymentBreakdown(date, amount, interestAccrued, interestPaid, principalPaid, newOutstanding, newStatus) {
+        function updatePaymentBreakdown(date, amount, interestPaid, principalPaid, newOutstanding, newStatus) {
             const breakdown = `
 RINCIAN PEMBAYARAN
 Tanggal: ${date}
 Nominal: Rp${fmt(amount)}
-Bunga Terutang: Rp${fmt(interestAccrued)}
 Bunga Dibayar: Rp${fmt(interestPaid)}
 Pokok Dibayar: Rp${fmt(principalPaid)}
 Sisa Pokok: Rp${fmt(newOutstanding)}
@@ -661,10 +815,21 @@ Status: ${newStatus.toUpperCase()}
 
         function refreshLoanOptions() {
             const opts = allLoans.map(l => {
-                const sortedPayments = [...l.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
-                const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : l.start;
-                const interestAccrued = calcInterestDue(l, lastPaymentDate, todayStr());
-                return `<option value="${l.id}">${l.name} — Sisa: Rp${fmt(l.outstanding)}, Bunga Terutang: Rp${fmt(interestAccrued)}</option>`;
+                let info = `Sisa: Rp${fmt(l.outstanding)}`;
+                if (l.method === 'fixed_installment') {
+                    let totalPayment;
+                    if (l.period === 'monthly') {
+                        totalPayment = calculateFixedInstallmentMonthly(l.principal, l.rate, l.tenorValue);
+                        info = `Sisa: Rp${fmt(l.outstanding)}, Angsuran: Rp${fmt(totalPayment)}/bln`;
+                    } else {
+                        totalPayment = calculateFixedInstallment(l.principal, l.rate, l.tenorValue, l.tenorUnit);
+                        info = `Sisa: Rp${fmt(l.outstanding)}, Angsuran: Rp${fmt(totalPayment)}/hari`;
+                    }
+                } else if (l.method === 'interest_only_decreasing') {
+                    const interestDue = calcInterestFromOutstanding(l, todayStr());
+                    info = `Sisa: Rp${fmt(l.outstanding)}, Bunga: Rp${fmt(interestDue)}/bln`;
+                }
+                return `<option value="${l.id}">${l.name} — ${info}</option>`;
             }).join('');
             $('#p-loan').innerHTML = '<option value="">— pilih —</option>' + opts;
             $('#r-loan').innerHTML = '<option value="">— pilih —</option>' + opts;
@@ -725,8 +890,13 @@ Sisa Pokok: Rp${fmt(loan.outstanding)}
 Tingkat Bunga: ${rateAt(loan, todayStr())}% (${loan.period === 'daily' ? 'Harian' : 'Bulanan'})
 Tanggal Pinjam: ${loan.start}
 Jatuh Tempo: ${getDueDate(loan)}
-Catatan: ${loan.note || '-'}
 `;
+                        if (loan.adminFee > 0 || loan.savingsFee > 0) {
+                            details += `\nBiaya Admin: Rp${fmt(loan.adminFee)}\n`;
+                            details += `Biaya Tabungan: Rp${fmt(loan.savingsFee)}\n`;
+                            details += `Dana Diterima: Rp${fmt(loan.principal - loan.adminFee - loan.savingsFee)}\n`;
+                        }
+                        details += `Catatan: ${loan.note || '-'}\n`;
                         alert('Detail Pinjaman:\n' + details);
                     }
                 });
@@ -764,6 +934,11 @@ Catatan: ${loan.note || '-'}
                     reportText += `Nama: ${l.name}\n`;
                     reportText += `Pokok Awal: Rp${fmt(l.principal)}\n`;
                     reportText += `Sisa Pokok: Rp${fmt(l.outstanding)}\n`;
+                    if (l.adminFee > 0 || l.savingsFee > 0) {
+                        reportText += `Biaya Admin: Rp${fmt(l.adminFee)}\n`;
+                        reportText += `Biaya Tabungan: Rp${fmt(l.savingsFee)}\n`;
+                        reportText += `Dana Diterima: Rp${fmt(l.principal - l.adminFee - l.savingsFee)}\n`;
+                    }
                     reportText += `Total Bayar Periode Ini: Rp${fmt(sum)} (Bunga: Rp${fmt(sumInterest)}, Pokok: Rp${fmt(sumPrincipal)})\n\n`;
 
                     totalNominal += sum;
@@ -791,6 +966,11 @@ Catatan: ${loan.note || '-'}
                 
                 let reportText = `LAPORAN PIUTANG UNTUK ${loan.name}\n\n`;
                 reportText += `Pokok Awal: Rp${fmt(loan.principal)}\n`;
+                if (loan.adminFee > 0 || loan.savingsFee > 0) {
+                    reportText += `Biaya Admin: Rp${fmt(loan.adminFee)}\n`;
+                    reportText += `Biaya Tabungan: Rp${fmt(loan.savingsFee)}\n`;
+                    reportText += `Dana Diterima: Rp${fmt(loan.principal - loan.adminFee - loan.savingsFee)}\n`;
+                }
                 reportText += `Sisa Pokok: Rp${fmt(loan.outstanding)}\n`;
                 reportText += `Total Bunga Terutang: Rp${fmt(calcInterestDue(loan, loan.start, end))}\n`;
                 reportText += `Periode Laporan: ${start} s/d ${end}\n\n`;
@@ -911,13 +1091,15 @@ Catatan: ${loan.note || '-'}
             $('#c-tenor-value').value = loan.tenorValue;
             $('#c-tenor-unit').value = loan.tenorUnit;
             $('#c-method').value = loan.method;
+            $('#c-admin-fee').value = loan.adminFee || 0;
+            $('#c-savings-fee').value = loan.savingsFee || 0;
             $('#c-note').value = loan.note;
             $('#btn-create').textContent = 'Perbarui Pinjaman';
             $('#btn-create').onclick = () => createLoan({
                 id, name: $('#c-name').value, contact: $('#c-contact').value, address: $('#c-address').value,
                 start: $('#c-start').value, principal: $('#c-principal').value, rate: $('#c-rate').value,
                 period: $('#c-period').value, tenorValue: $('#c-tenor-value').value, tenorUnit: $('#c-tenor-unit').value,
-                method: $('#c-method').value, note: $('#c-note').value
+                method: $('#c-method').value, adminFee: $('#c-admin-fee').value, savingsFee: $('#c-savings-fee').value, note: $('#c-note').value
             });
             document.querySelector('[data-tab="create"]').click();
         };
@@ -937,20 +1119,56 @@ Catatan: ${loan.note || '-'}
                 name, contact: $('#c-contact').value, address: $('#c-address').value,
                 start: $('#c-start').value, principal, rate: $('#c-rate').value,
                 period: $('#c-period').value, tenorValue: $('#c-tenor-value').value, tenorUnit: $('#c-tenor-unit').value,
-                method: $('#c-method').value, note: $('#c-note').value
+                method: $('#c-method').value, adminFee: $('#c-admin-fee').value, savingsFee: $('#c-savings-fee').value, note: $('#c-note').value
             });
         };
 
         $('#btn-pay').onclick = () => {
             const id = $('#p-loan').value;
-            const amount = $('#p-amount').value;
-            if (!id || !amount) return alert('Pilih pinjaman & nominal');
+            const loan = allLoans.find(l => l.id === id);
+            if (!id) return alert('Pilih pinjaman');
+            
+            let amount;
+            let type = $('#p-type').value;
+
+            if (loan.method === 'fixed_installment' && (type === 'both' || type === 'principal')) {
+                if (loan.period === 'monthly') {
+                    amount = calculateFixedInstallmentMonthly(loan.principal, loan.rate, loan.tenorValue);
+                } else {
+                    amount = calculateFixedInstallment(loan.principal, loan.rate, loan.tenorValue, loan.tenorUnit);
+                }
+            } else if (loan.method === 'interest_only_decreasing' && type === 'interest') {
+                 amount = calcInterestFromOutstanding(loan, $('#p-date').value);
+            } else {
+                amount = $('#p-amount').value;
+                if (!amount) return alert('Masukkan nominal pembayaran');
+            }
+            
             addPayment(id, {
                 date: $('#p-date').value,
                 amount,
                 note: $('#p-note').value,
-                type: $('#p-type').value
+                type
             });
+        };
+        
+        $('#btn-full-pay').onclick = async () => {
+            const id = $('#p-loan').value;
+            const payDate = $('#p-date').value;
+            if (!id || !payDate) return alert('Pilih pinjaman & tanggal');
+            
+            const loan = allLoans.find(l => l.id === id);
+            if (!loan) return;
+            
+            const totalAmount = calculateFullPaymentAmount(id, payDate);
+            if (confirm(`Total pelunasan adalah Rp${fmt(totalAmount)}. Lanjutkan?`)) {
+                await addPayment(id, {
+                    date: payDate,
+                    amount: totalAmount,
+                    note: 'Pelunasan Dipercepat',
+                    type: 'both'
+                });
+            }
         };
 
         $('#btn-rate').onclick = async () => {
