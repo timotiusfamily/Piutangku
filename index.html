@@ -106,10 +106,9 @@
         .card { background: #fff; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
         .card h2 { margin: 0; padding: 14px 16px 12px; font-size: 18px; border-bottom: 1px dashed var(--border); }
         .card .content { padding: 12px; }
-        .grid { display: grid; gap: 12px; }
-        .g3 { grid-template-columns: 1fr; gap: 12px; }
-        @media (min-width: 720px) { .g3 { grid-template-columns: repeat(3,1fr); } }
-
+        .grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+        @media (min-width: 720px) { .grid.g3 { grid-template-columns: repeat(3,1fr); } }
+        
         label { display: block; font-size: 12px; color: var(--muted); margin: 6px 2px 4px; }
         input, select, textarea, button { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: #fff; color: var(--text); font-size: 14px; }
         textarea { min-height: 80px; resize: vertical; }
@@ -301,6 +300,16 @@
                                 </tr>
                             </thead>
                             <tbody id="report-body"></tbody>
+                            <tfoot id="report-footer" class="hidden">
+                                <tr>
+                                    <td><b>Total</b></td>
+                                    <td id="total-amount" class="mono"></td>
+                                    <td id="total-interest" class="mono"></td>
+                                    <td id="total-principal" class="mono"></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                     <pre id="report-output" class="hidden"></pre>
@@ -571,7 +580,6 @@
             }
         }
 
-        // Perbaikan logika pembayaran
         async function addPayment(loanId, { date, amount, note, type }) {
             const loanRef = doc(db, 'loans', loanId);
             
@@ -733,14 +741,20 @@ Catatan: ${loan.note || '-'}
             const reportTable = $('#report-table');
             const reportBody = $('#report-body');
             const reportOutput = $('#report-output');
+            const reportFooter = $('#report-footer');
             reportOutput.classList.add('hidden');
             reportTable.classList.add('hidden');
+            reportFooter.classList.add('hidden');
             reportBody.innerHTML = '';
             
             if (!customer) {
                 let reportText = `LAPORAN PIUTANG\nPeriode: ${start} s/d ${end}\n\n`;
                 const filteredLoans = allLoans.filter(l => l.payments.some(p => p.date >= start && p.date <= end) || l.outstanding > 0);
                 
+                let totalNominal = 0;
+                let totalBunga = 0;
+                let totalPokok = 0;
+
                 filteredLoans.forEach(l => {
                     const payments = l.payments.filter(p => p.date >= start && p.date <= end);
                     const sum = payments.reduce((s, x) => s + x.amount, 0);
@@ -751,7 +765,18 @@ Catatan: ${loan.note || '-'}
                     reportText += `Pokok Awal: Rp${fmt(l.principal)}\n`;
                     reportText += `Sisa Pokok: Rp${fmt(l.outstanding)}\n`;
                     reportText += `Total Bayar Periode Ini: Rp${fmt(sum)} (Bunga: Rp${fmt(sumInterest)}, Pokok: Rp${fmt(sumPrincipal)})\n\n`;
+
+                    totalNominal += sum;
+                    totalBunga += sumInterest;
+                    totalPokok += sumPrincipal;
                 });
+                
+                reportText += `================================\n`;
+                reportText += `TOTAL KESELURUHAN:\n`;
+                reportText += `Jumlah Nominal: Rp${fmt(totalNominal)}\n`;
+                reportText += `Jumlah Bunga Dibayar: Rp${fmt(totalBunga)}\n`;
+                reportText += `Jumlah Pokok Dibayar: Rp${fmt(totalPokok)}\n`;
+
                 reportOutput.textContent = reportText;
                 reportOutput.classList.remove('hidden');
             } else {
@@ -767,12 +792,14 @@ Catatan: ${loan.note || '-'}
                 let reportText = `LAPORAN PIUTANG UNTUK ${loan.name}\n\n`;
                 reportText += `Pokok Awal: Rp${fmt(loan.principal)}\n`;
                 reportText += `Sisa Pokok: Rp${fmt(loan.outstanding)}\n`;
+                reportText += `Total Bunga Terutang: Rp${fmt(calcInterestDue(loan, loan.start, end))}\n`;
                 reportText += `Periode Laporan: ${start} s/d ${end}\n\n`;
                 reportOutput.textContent = reportText;
                 reportOutput.classList.remove('hidden');
 
                 if (payments.length) {
                     reportTable.classList.remove('hidden');
+                    reportFooter.classList.remove('hidden');
                     let tempOutstanding = loan.principal;
                     const allLoanPayments = allLoans.find(l=>l.id===loan.id)?.payments || [];
 
@@ -781,6 +808,10 @@ Catatan: ${loan.note || '-'}
                             tempOutstanding -= p.principalPaid;
                         }
                     }
+
+                    let totalAmount = 0;
+                    let totalInterestPaid = 0;
+                    let totalPrincipalPaid = 0;
 
                     payments.forEach(p => {
                         const newOutstanding = tempOutstanding - p.principalPaid;
@@ -796,10 +827,21 @@ Catatan: ${loan.note || '-'}
                         `;
                         reportBody.innerHTML += row;
                         tempOutstanding = newOutstanding;
+
+                        totalAmount += p.amount;
+                        totalInterestPaid += p.interestPaid;
+                        totalPrincipalPaid += p.principalPaid;
                     });
+                    
+                    $('#total-amount').textContent = `Rp${fmt(totalAmount)}`;
+                    $('#total-interest').textContent = `Rp${fmt(totalInterestPaid)}`;
+                    $('#total-principal').textContent = `Rp${fmt(totalPrincipalPaid)}`;
+
                 } else {
                     reportOutput.textContent = 'Tidak ada pembayaran dalam periode ini.';
                     reportOutput.classList.remove('hidden');
+                    reportTable.classList.add('hidden');
+                    reportFooter.classList.add('hidden');
                 }
             }
         });
@@ -814,6 +856,8 @@ Catatan: ${loan.note || '-'}
                     const cells = Array.from(row.cells).map(cell => cell.textContent);
                     fullReport += `Tgl: ${cells[0]}, Nominal: ${cells[1]}, Bunga: ${cells[2]}, Pokok: ${cells[3]}\n`;
                 });
+                const totalCells = Array.from($('#report-footer').rows[0].cells).map(cell => cell.textContent);
+                fullReport += `\nTOTAL: Nominal: ${totalCells[1]}, Bunga: ${totalCells[2]}, Pokok: ${totalCells[3]}`;
             }
 
             if (!fullReport.trim()) {
@@ -844,7 +888,8 @@ Catatan: ${loan.note || '-'}
                 doc.autoTable({
                     startY: 40,
                     head: [['Tanggal', 'Nominal', 'Bunga Dibayar', 'Pokok Dibayar', 'Sisa Pokok', 'Catatan']],
-                    body: Array.from($('#report-body').rows).map(row => Array.from(row.cells).map(cell => cell.textContent))
+                    body: Array.from($('#report-body').rows).map(row => Array.from(row.cells).map(cell => cell.textContent)),
+                    foot: [['Total', $('#total-amount').textContent, $('#total-interest').textContent, $('#total-principal').textContent, '', '']],
                 });
             } else {
                 doc.text($('#report-output').textContent, 14, 35, { maxWidth: 180 });
