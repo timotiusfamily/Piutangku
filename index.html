@@ -640,7 +640,7 @@ Status: ${newStatus.toUpperCase()}
         const sortedPayments = [...l.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
         const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : l.start;
         const interestAccrued = calcInterestDue(l, lastPaymentDate, todayStr());
-        return `<option value="${l.id}">${l.name} — Sisa: Rp${fmt(l.outstanding)}, Bunga: Rp${fmt(interestAccrued)}</option>`;
+        return `<option value="${l.id}">${l.name} — Sisa: Rp${fmt(l.outstanding)}, Bunga Terutang: Rp${fmt(interestAccrued)}</option>`;
       }).join('');
       $('#p-loan').innerHTML = '<option value="">— pilih —</option>' + opts;
       $('#r-loan').innerHTML = '<option value="">— pilih —</option>' + opts;
@@ -758,7 +758,6 @@ Status: ${newStatus.toUpperCase()}
       doc.setFontSize(12);
       const start = $('#rep-start').value;
       const end = $('#rep-end').value;
-      doc.text(`Periode: ${start} s/d ${end}`, 14, 28);
       doc.text($('#report-output').textContent, 14, 35, { maxWidth: 180 });
       doc.save("Laporan-Piutang.pdf");
     });
