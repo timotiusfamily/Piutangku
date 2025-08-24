@@ -52,7 +52,7 @@
     }
     .logo {
       width: 95px;
-      height: 62px;
+      height: 70px;
       border-radius: 12px;
       background-size: cover;
       background-position: center;
@@ -434,6 +434,21 @@
         refreshCustomerOptions();
         renderList(allLoans);
       });
+
+      $('#p-loan').addEventListener('change', (e) => {
+        const loanId = e.target.value;
+        if (loanId) {
+          const loan = allLoans.find(l => l.id === loanId);
+          if (loan) {
+            const sortedPayments = [...loan.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
+            const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : loan.start;
+            const interestAccrued = calcInterestDue(loan, lastPaymentDate, todayStr());
+            $('#p-dueinfo').textContent = `Bunga terutang sampai hari ini: Rp${fmt(interestAccrued)}`;
+          }
+        } else {
+          $('#p-dueinfo').textContent = '—';
+        }
+      });
     }
 
     function loadDashboard() {
@@ -448,31 +463,57 @@
       $('#stat-payments').textContent = totalPaymentsCount;
     }
 
-    // ===== PERHITUNGAN BUNGA DENGAN HARIAN & BULANAN =====
+    // ===== PERHITUNGAN BUNGA DENGAN HARIAN & BULANAN (REVISI) =====
     function calcInterestDue(loan, fromDate, toDate) {
       if (!loan || loan.outstanding <= 0 || !fromDate || !toDate) return 0;
+
+      let totalInterest = 0;
       const from = new Date(fromDate);
       const to = new Date(toDate);
-      if (isNaN(from.getTime()) || isNaN(to.getTime()) || to < from) return 0;
+      
+      if (to < from) return 0;
 
-      const rate = rateAt(loan, fromDate);
-      if (rate <= 0) return 0;
+      // Mendapatkan riwayat bunga yang relevan
+      const relevantRates = [...loan.rateHistory]
+        .filter(r => new Date(r.date) < to)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      const initialRateDate = relevantRates[0] ? new Date(relevantRates[0].date) : new Date(loan.start);
+      const startCalcDate = new Date(Math.max(from, initialRateDate));
 
-      let interest = 0;
-      if (loan.period === 'daily') {
-        const diffTime = to.getTime() - from.getTime();
-        const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-        const dailyRate = rate / 100;
-        interest = loan.outstanding * dailyRate * diffDays;
-      } else if (loan.period === 'monthly') {
-        let months = (to.getFullYear() - from.getFullYear()) * 12;
-        months -= from.getMonth();
-        months += to.getMonth();
-        months = Math.max(0, months);
-        const monthlyRate = rate / 100;
-        interest = loan.outstanding * monthlyRate * months;
+      let currentCalcDate = new Date(startCalcDate);
+      const endCalcDate = new Date(to);
+
+      while (currentCalcDate <= endCalcDate) {
+        const nextRateChange = relevantRates.find(r => new Date(r.date) > currentCalcDate);
+        const endPeriodDate = nextRateChange ? new Date(nextRateChange.date) : endCalcDate;
+        
+        const periodEndDate = new Date(Math.min(endPeriodDate, endCalcDate));
+
+        const rate = rateAt(loan, toISO(currentCalcDate));
+        if (rate <= 0) break;
+
+        const principal = loan.outstanding;
+
+        if (loan.period === 'daily') {
+          const diffTime = periodEndDate.getTime() - currentCalcDate.getTime();
+          const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+          const dailyRate = rate / 100;
+          totalInterest += principal * dailyRate * diffDays;
+        } else if (loan.period === 'monthly') {
+          let months = (periodEndDate.getFullYear() - currentCalcDate.getFullYear()) * 12;
+          months -= currentCalcDate.getMonth();
+          months += periodEndDate.getMonth();
+          months = Math.max(0, months);
+          const monthlyRate = rate / 100;
+          totalInterest += principal * monthlyRate * months;
+        }
+        
+        if (currentCalcDate >= endCalcDate) break;
+        currentCalcDate = periodEndDate;
       }
-      return Math.round(interest * 100) / 100;
+
+      return Math.round(totalInterest * 100) / 100;
     }
 
     function rateAt(loan, date) {
@@ -521,12 +562,15 @@
       $('#btn-create').textContent = 'Simpan Pinjaman';
     }
 
-    async function addPayment(loanId, {date, amount, note, type}) {
+    // ===== LOGIKA PEMBAYARAN BARU =====
+    async function addPayment(loanId, { date, amount, note, type }) {
       const loanRef = doc(db, 'loans', loanId);
       const loanSnap = await getDoc(loanRef);
       if (!loanSnap.exists()) return alert("Pinjaman tidak ditemukan.");
 
       const loan = allLoans.find(l => l.id === loanId);
+      if (!loan) return;
+
       const sortedPayments = [...loan.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
       const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : loan.start;
 
@@ -534,11 +578,13 @@
       let interestPaid = 0, principalPaid = 0;
       let remaining = Number(amount);
 
-      if (type === 'interest' || type === 'both') {
+      if (type === 'interest') {
+        interestPaid = Math.min(remaining, interestAccrued);
+      } else if (type === 'principal') {
+        principalPaid = Math.min(remaining, loan.outstanding);
+      } else { // type === 'both'
         interestPaid = Math.min(remaining, interestAccrued);
         remaining -= interestPaid;
-      }
-      if (type === 'principal' || (type === 'both' && remaining > 0)) {
         principalPaid = Math.min(remaining, loan.outstanding);
       }
 
@@ -555,12 +601,17 @@
       });
 
       await updateDoc(loanRef, { outstanding: newOutstanding, status: newStatus });
+      
+      updatePaymentBreakdown(date, amount, interestAccrued, interestPaid, principalPaid, newOutstanding, newStatus);
+      alert(`Pembayaran berhasil. Bunga: Rp${fmt(interestPaid)}, Pokok: Rp${fmt(principalPaid)}`);
+    }
 
+    function updatePaymentBreakdown(date, amount, interestAccrued, interestPaid, principalPaid, newOutstanding, newStatus) {
       const breakdown = `
 RINCIAN PEMBAYARAN
 Tanggal: ${date}
 Nominal: Rp${fmt(amount)}
-Bunga Terutang (sejak ${lastPaymentDate}): Rp${fmt(interestAccrued)}
+Bunga Terutang: Rp${fmt(interestAccrued)}
 Bunga Dibayar: Rp${fmt(interestPaid)}
 Pokok Dibayar: Rp${fmt(principalPaid)}
 Sisa Pokok: Rp${fmt(newOutstanding)}
@@ -568,8 +619,6 @@ Status: ${newStatus.toUpperCase()}
       `;
       $('#p-breakdown').textContent = breakdown;
       $('#p-breakdown').classList.remove('hidden');
-
-      alert(`Pembayaran berhasil. Bunga: Rp${fmt(interestPaid)}, Pokok: Rp${fmt(principalPaid)}`);
     }
 
     function getDueDate(loan) {
@@ -587,7 +636,12 @@ Status: ${newStatus.toUpperCase()}
     }
 
     function refreshLoanOptions() {
-      const opts = allLoans.map(l => `<option value="${l.id}">${l.name} — Rp${fmt(l.outstanding)}</option>`).join('');
+      const opts = allLoans.map(l => {
+        const sortedPayments = [...l.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
+        const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : l.start;
+        const interestAccrued = calcInterestDue(l, lastPaymentDate, todayStr());
+        return `<option value="${l.id}">${l.name} — Sisa: Rp${fmt(l.outstanding)}, Bunga: Rp${fmt(interestAccrued)}</option>`;
+      }).join('');
       $('#p-loan').innerHTML = '<option value="">— pilih —</option>' + opts;
       $('#r-loan').innerHTML = '<option value="">— pilih —</option>' + opts;
     }
