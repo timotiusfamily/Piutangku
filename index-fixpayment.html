@@ -471,19 +471,18 @@
                 }
             });
             
-            // START: REVISI - Event listener baru untuk jenis pembayaran
+            // Logika baru untuk menampilkan/menyembunyikan input nominal
             $('#p-type').addEventListener('change', (e) => {
                 const loanId = $('#p-loan').value;
                 const loan = allLoans.find(l => l.id === loanId);
                 const isFixedInstallment = loan?.method === 'fixed_installment';
 
-                if (isFixedInstallment && e.target.value !== 'partial_principal') {
+                if (isFixedInstallment && (e.target.value === 'both' || e.target.value === 'principal')) {
                     $('#p-amount-div').classList.add('hidden');
                 } else {
                     $('#p-amount-div').classList.remove('hidden');
                 }
             });
-            // END: REVISI
 
             onSnapshot(collection(db, 'loans'), async (snap) => {
                 allLoans = await Promise.all(snap.docs.map(async d => {
@@ -510,17 +509,25 @@
             const loan = allLoans.find(l => l.id === loanId);
             
             if (loanId && payDate && loan) {
-                // START: REVISI - Logika untuk menampilkan input nominal jika tipe pembayaran adalah 'partial_principal'
                 const paymentType = $('#p-type').value;
+                
                 if (loan.method === 'fixed_installment') {
-                    if (paymentType === 'partial_principal') {
-                        $('#p-amount-div').classList.remove('hidden');
-                        $('#p-dueinfo').textContent = `Sisa pokok: Rp${fmt(loan.outstanding)}. Bunga terutang: Rp${fmt(calcInterestDue(loan, loan.payments.length > 0 ? loan.payments[loan.payments.length - 1].date : loan.start, payDate))}`;
+                    // Update tampilan input nominal berdasarkan jenis pembayaran yang dipilih
+                    if (paymentType === 'both' || paymentType === 'principal') {
+                         $('#p-amount-div').classList.add('hidden');
                     } else {
-                        const totalPayment = calculateFixedInstallment(loan.principal, loan.rate, loan.tenorValue, loan.tenorUnit);
-                        $('#p-dueinfo').textContent = `Angsuran tetap: Rp${fmt(totalPayment)}`;
-                        $('#p-amount-div').classList.add('hidden');
+                         $('#p-amount-div').classList.remove('hidden');
                     }
+
+                    let totalPayment;
+                    if (loan.period === 'monthly') {
+                        totalPayment = calculateFixedInstallmentMonthly(loan.principal, loan.rate, loan.tenorValue);
+                        $('#p-dueinfo').textContent = `Angsuran tetap per bulan: Rp${fmt(totalPayment)}`;
+                    } else {
+                        totalPayment = calculateFixedInstallment(loan.principal, loan.rate, loan.tenorValue, loan.tenorUnit);
+                        $('#p-dueinfo').textContent = `Angsuran tetap per hari: Rp${fmt(totalPayment)}`;
+                    }
+                    
                     $('#btn-full-pay').classList.remove('hidden');
                 } else {
                     const sortedPayments = [...loan.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -530,7 +537,6 @@
                     $('#p-amount-div').classList.remove('hidden');
                     $('#btn-full-pay').classList.add('hidden');
                 }
-                // END: REVISI
             } else {
                 $('#p-dueinfo').textContent = '—';
                 $('#p-amount-div').classList.remove('hidden');
@@ -539,13 +545,21 @@
         }
 
         function calculateFixedInstallment(principal, rate, tenorValue, tenorUnit) {
-            // Konversi tenor dan rate ke harian
-            const N = tenorUnit === 'days' ? tenorValue : tenorValue * 30; // total hari
-            const i_daily = (rate / 100) / 30; // bunga harian
+            const N = tenorUnit === 'days' ? tenorValue : tenorValue * 30;
+            const i_daily = (rate / 100) / 30;
 
-            // Rumus angsuran annuitas
             if (i_daily === 0) return principal / N;
             const installment = (principal * i_daily) / (1 - Math.pow(1 + i_daily, -N));
+            return Math.round(installment);
+        }
+        
+        // Fungsi baru untuk angsuran bulanan
+        function calculateFixedInstallmentMonthly(principal, rate, tenorValue) {
+            const r_monthly = (rate / 100);
+            const n_months = tenorValue;
+
+            if (r_monthly === 0) return principal / n_months;
+            const installment = (principal * r_monthly) / (1 - Math.pow(1 + r_monthly, -n_months));
             return Math.round(installment);
         }
 
@@ -563,7 +577,6 @@
                 }
             }
             
-            // Hitung sisa pokok dan bunga yang terutang hingga hari ini
             const interestDue = calcInterestDue(loan, lastPaymentDate, payDate);
             return outstandingPrincipal + interestDue;
         }
@@ -680,25 +693,33 @@
                     let interestPaid = 0;
                     let principalPaid = 0;
                     let remaining = Number(amount);
-
-                    // Logika pembayaran
-                    if (type === 'both' || type === 'principal') {
-                        const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
-                        interestPaid = Math.min(remaining, interestAccrued);
-                        remaining -= interestPaid;
-                        principalPaid = remaining;
-                    } else if (type === 'interest') {
-                        interestPaid = remaining;
-                        principalPaid = 0;
-                    } else if (type === 'partial_principal') {
-                        principalPaid = remaining;
-                        interestPaid = 0;
-                    } else if (loan.method === 'fixed_installment') {
-                        // Logika untuk angsuran tetap (asumsi type 'both' atau 'principal')
-                        const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
-                        interestPaid = Math.min(remaining, interestAccrued);
-                        remaining -= interestPaid;
-                        principalPaid = remaining;
+                    
+                    if (loan.method === 'fixed_installment') {
+                        if (type === 'both' || type === 'principal') {
+                            const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
+                            interestPaid = Math.min(remaining, interestAccrued);
+                            remaining -= interestPaid;
+                            principalPaid = remaining;
+                        } else if (type === 'interest') {
+                            interestPaid = remaining;
+                            principalPaid = 0;
+                        } else if (type === 'partial_principal') {
+                            principalPaid = remaining;
+                            interestPaid = 0;
+                        }
+                    } else { // Untuk pinjaman non-angsuran
+                        if (type === 'both' || type === 'principal') {
+                            const interestAccrued = calcInterestDue(loan, lastPaymentDate, date);
+                            interestPaid = Math.min(remaining, interestAccrued);
+                            remaining -= interestPaid;
+                            principalPaid = remaining;
+                        } else if (type === 'interest') {
+                            interestPaid = remaining;
+                            principalPaid = 0;
+                        } else if (type === 'partial_principal') {
+                            principalPaid = remaining;
+                            interestPaid = 0;
+                        }
                     }
                     
                     const newOutstanding = Math.max(0, loan.outstanding - principalPaid);
@@ -754,8 +775,14 @@ Status: ${newStatus.toUpperCase()}
             const opts = allLoans.map(l => {
                 let info = `Sisa: Rp${fmt(l.outstanding)}`;
                 if (l.method === 'fixed_installment') {
-                    const totalPayment = calculateFixedInstallment(l.principal, l.rate, l.tenorValue, l.tenorUnit);
-                    info = `Sisa: Rp${fmt(l.outstanding)}, Angsuran: Rp${fmt(totalPayment)}`;
+                    let totalPayment;
+                    if (l.period === 'monthly') {
+                        totalPayment = calculateFixedInstallmentMonthly(l.principal, l.rate, l.tenorValue);
+                        info = `Sisa: Rp${fmt(l.outstanding)}, Angsuran: Rp${fmt(totalPayment)}/bln`;
+                    } else {
+                        totalPayment = calculateFixedInstallment(l.principal, l.rate, l.tenorValue, l.tenorUnit);
+                        info = `Sisa: Rp${fmt(l.outstanding)}, Angsuran: Rp${fmt(totalPayment)}/hari`;
+                    }
                 } else {
                     const sortedPayments = [...l.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
                     const lastPaymentDate = sortedPayments.length > 0 ? sortedPayments[sortedPayments.length - 1].date : l.start;
@@ -1064,8 +1091,13 @@ Jatuh Tempo: ${getDueDate(loan)}
             let amount;
             let type = $('#p-type').value;
 
-            if (loan.method === 'fixed_installment' && type !== 'partial_principal') {
-                amount = calculateFixedInstallment(loan.principal, loan.rate, loan.tenorValue, loan.tenorUnit);
+            if (loan.method === 'fixed_installment' && (type === 'both' || type === 'principal')) {
+                // Mengambil nilai angsuran dari perhitungan
+                if (loan.period === 'monthly') {
+                    amount = calculateFixedInstallmentMonthly(loan.principal, loan.rate, loan.tenorValue);
+                } else {
+                    amount = calculateFixedInstallment(loan.principal, loan.rate, loan.tenorValue, loan.tenorUnit);
+                }
             } else {
                 amount = $('#p-amount').value;
                 if (!amount) return alert('Masukkan nominal pembayaran');
@@ -1093,7 +1125,7 @@ Jatuh Tempo: ${getDueDate(loan)}
                     date: payDate,
                     amount: totalAmount,
                     note: 'Pelunasan Dipercepat',
-                    type: 'both' // Tipe pembayaran pokok dan bunga
+                    type: 'both'
                 });
             }
         };
