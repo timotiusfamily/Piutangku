@@ -288,6 +288,21 @@
             <div><label>Sampai Tanggal</label><input id="rep-end" type="date" /></div>
             <div style="grid-column:1/-1"><button class="btn primary" id="btn-generate-report">Tampilkan</button></div>
           </div>
+          <div style="overflow-x: auto;">
+            <table id="report-table" class="hidden">
+              <thead>
+                <tr>
+                  <th>Tanggal</th>
+                  <th>Nominal</th>
+                  <th>Bunga Dibayar</th>
+                  <th>Pokok Dibayar</th>
+                  <th>Sisa Pokok</th>
+                  <th>Catatan</th>
+                </tr>
+              </thead>
+              <tbody id="report-body"></tbody>
+            </table>
+          </div>
           <pre id="report-output" class="hidden"></pre>
           <div class="stack" style="margin-top:12px">
             <button class="btn success" id="btn-share-wa">Kirim WhatsApp</button>
@@ -466,53 +481,42 @@
     // ===== PERHITUNGAN BUNGA DENGAN HARIAN & BULANAN (REVISI) =====
     function calcInterestDue(loan, fromDate, toDate) {
       if (!loan || loan.outstanding <= 0 || !fromDate || !toDate) return 0;
-
       let totalInterest = 0;
       const from = new Date(fromDate);
       const to = new Date(toDate);
-      
       if (to < from) return 0;
 
-      // Mendapatkan riwayat bunga yang relevan
-      const relevantRates = [...loan.rateHistory]
-        .filter(r => new Date(r.date) < to)
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
-      
-      const initialRateDate = relevantRates[0] ? new Date(relevantRates[0].date) : new Date(loan.start);
-      const startCalcDate = new Date(Math.max(from, initialRateDate));
+      const sortedPayments = [...loan.payments].sort((a, b) => new Date(a.date) - new Date(b.date));
+      let lastCalcDate = sortedPayments.length > 0 ? new Date(sortedPayments[sortedPayments.length - 1].date) : new Date(loan.start);
 
-      let currentCalcDate = new Date(startCalcDate);
-      const endCalcDate = new Date(to);
+      // Mulai perhitungan dari tanggal terakhir pembayaran atau tanggal pinjaman
+      let currentCalcDate = new Date(lastCalcDate);
+      const endCalcDate = new Date(toDate);
 
-      while (currentCalcDate <= endCalcDate) {
-        const nextRateChange = relevantRates.find(r => new Date(r.date) > currentCalcDate);
-        const endPeriodDate = nextRateChange ? new Date(nextRateChange.date) : endCalcDate;
-        
-        const periodEndDate = new Date(Math.min(endPeriodDate, endCalcDate));
-
-        const rate = rateAt(loan, toISO(currentCalcDate));
-        if (rate <= 0) break;
-
-        const principal = loan.outstanding;
-
+      while (currentCalcDate < endCalcDate) {
+        let periodEndDate = new Date(currentCalcDate);
         if (loan.period === 'daily') {
-          const diffTime = periodEndDate.getTime() - currentCalcDate.getTime();
-          const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-          const dailyRate = rate / 100;
-          totalInterest += principal * dailyRate * diffDays;
+          periodEndDate.setDate(periodEndDate.getDate() + 1);
         } else if (loan.period === 'monthly') {
-          let months = (periodEndDate.getFullYear() - currentCalcDate.getFullYear()) * 12;
-          months -= currentCalcDate.getMonth();
-          months += periodEndDate.getMonth();
-          months = Math.max(0, months);
-          const monthlyRate = rate / 100;
-          totalInterest += principal * monthlyRate * months;
+          periodEndDate.setMonth(periodEndDate.getMonth() + 1);
         }
-        
-        if (currentCalcDate >= endCalcDate) break;
+
+        // Tentukan tingkat bunga yang berlaku untuk hari/bulan ini
+        const rate = rateAt(loan, toISO(currentCalcDate));
+        if (rate <= 0) {
+          currentCalcDate = periodEndDate;
+          continue;
+        }
+
+        const dailyRate = rate / 100 / (loan.period === 'monthly' ? 30 : 1);
+        const daysInPeriod = Math.min(
+          (periodEndDate.getTime() - currentCalcDate.getTime()) / (1000 * 60 * 60 * 24),
+          (endCalcDate.getTime() - currentCalcDate.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        totalInterest += loan.outstanding * dailyRate * daysInPeriod;
         currentCalcDate = periodEndDate;
       }
-
       return Math.round(totalInterest * 100) / 100;
     }
 
@@ -580,6 +584,7 @@
 
       if (type === 'interest') {
         interestPaid = Math.min(remaining, interestAccrued);
+        remaining -= interestPaid;
       } else if (type === 'principal') {
         principalPaid = Math.min(remaining, loan.outstanding);
       } else { // type === 'both'
@@ -587,7 +592,7 @@
         remaining -= interestPaid;
         principalPaid = Math.min(remaining, loan.outstanding);
       }
-
+      
       const newOutstanding = Math.max(0, loan.outstanding - principalPaid);
       const newStatus = newOutstanding <= 0 ? 'lunas' : 'active';
 
@@ -688,60 +693,76 @@ Status: ${newStatus.toUpperCase()}
           </tr>`;
       }
       $('#loan-rows').innerHTML = rows || '<tr><td colspan="7">Tidak ada data</td></tr>';
+
+      // Attach click event listener to each row
+      $$('#loan-rows tr').forEach(row => {
+        row.addEventListener('click', (e) => {
+          const loanId = row.dataset.id;
+          if (loanId) {
+            alert('Fitur detail pinjaman akan dikembangkan. ID Pinjaman: ' + loanId);
+            // Implement your detailed view logic here
+          }
+        });
+      });
     }
 
     $('#btn-generate-report').addEventListener('click', () => {
       const customer = $('#rep-customer').value;
       const start = $('#rep-start').value;
       const end = $('#rep-end').value;
-      let reportText = '';
-
-      if (customer) {
-        const loan = allLoans.find(l => l.name === customer);
-        if (!loan) {
-          reportText = 'Customer tidak ditemukan.';
-        } else {
-          reportText += `LAPORAN PIUTANG\nPeriode: ${start} s/d ${end}\n\n`;
-          reportText += `Customer: ${loan.name}\n`;
-          reportText += `Kontak: ${loan.contact || '-'}\n`;
-          reportText += `Pokok Awal: Rp${fmt(loan.principal)}\n`;
-          reportText += `Sisa Pokok: Rp${fmt(loan.outstanding)}\n`;
-          reportText += `Status: ${loan.status === 'lunas' ? 'Lunas' : 'Aktif'}\n`;
-          reportText += `Jatuh Tempo: ${getDueDate(loan)}\n\n`;
-
-          const payments = loan.payments.filter(p => p.date >= start && p.date <= end);
-          if (payments.length) {
-            reportText += `Pembayaran:\n`;
-            let totalPaid = 0, totalInterest = 0, totalPrincipal = 0;
-            payments.forEach(p => {
-              reportText += `- ${p.date}: Rp${fmt(p.amount)} (Bunga: Rp${fmt(p.interestPaid)}, Pokok: Rp${fmt(p.principalPaid)}) ${p.note ? `(${p.note})` : ''}\n`;
-              totalPaid += p.amount;
-              totalInterest += p.interestPaid;
-              totalPrincipal += p.principalPaid;
-            });
-            reportText += `\nTotal Bayar: Rp${fmt(totalPaid)}\n`;
-            reportText += `Total Bunga: Rp${fmt(totalInterest)}\n`;
-            reportText += `Total Pokok: Rp${fmt(totalPrincipal)}\n`;
-          } else {
-            reportText += `Tidak ada pembayaran dalam periode ini.\n`;
-          }
-        }
-      } else {
-        reportText += `LAPORAN PIUTANG\nPeriode: ${start} s/d ${end}\n\n`;
+      
+      const reportTable = $('#report-table');
+      const reportBody = $('#report-body');
+      const reportOutput = $('#report-output');
+      reportOutput.classList.add('hidden');
+      reportTable.classList.add('hidden');
+      reportBody.innerHTML = '';
+      
+      if (!customer) {
+        // Laporan ringkasan
+        let reportText = `LAPORAN PIUTANG\nPeriode: ${start} s/d ${end}\n\n`;
         allLoans.forEach(l => {
           const payments = l.payments.filter(p => p.date >= start && p.date <= end);
           const sum = payments.reduce((s, x) => s + x.amount, 0);
           if (sum > 0 || l.outstanding > 0) {
-            reportText += `${l.name}:\n`;
-            reportText += `  Pokok Awal: Rp${fmt(l.principal)}\n`;
-            reportText += `  Sisa Pokok: Rp${fmt(l.outstanding)}\n`;
-            reportText += `  Bayar: Rp${fmt(sum)} (Bunga: Rp${fmt(payments.reduce((s,x)=>s+x.interestPaid,0))})\n\n`;
+            reportText += `Nama: ${l.name}\n`;
+            reportText += `Pokok Awal: Rp${fmt(l.principal)}\n`;
+            reportText += `Sisa Pokok: Rp${fmt(l.outstanding)}\n`;
+            reportText += `Total Bayar: Rp${fmt(sum)} (Bunga: Rp${fmt(payments.reduce((s,x)=>s+x.interestPaid,0))})\n\n`;
           }
         });
-      }
+        reportOutput.textContent = reportText;
+        reportOutput.classList.remove('hidden');
+      } else {
+        // Laporan per customer
+        const loan = allLoans.find(l => l.name === customer);
+        if (!loan) {
+          reportOutput.textContent = 'Customer tidak ditemukan.';
+          reportOutput.classList.remove('hidden');
+          return;
+        }
 
-      $('#report-output').textContent = reportText;
-      $('#report-output').classList.remove('hidden');
+        const payments = loan.payments.filter(p => p.date >= start && p.date <= end);
+        if (payments.length) {
+          reportTable.classList.remove('hidden');
+          payments.forEach(p => {
+            const row = `
+              <tr>
+                <td>${p.date}</td>
+                <td class="mono">Rp${fmt(p.amount)}</td>
+                <td class="mono">Rp${fmt(p.interestPaid)}</td>
+                <td class="mono">Rp${fmt(p.principalPaid)}</td>
+                <td class="mono">Rp${fmt(loan.outstanding - p.principalPaid)}</td>
+                <td>${p.note || '-'}</td>
+              </tr>
+            `;
+            reportBody.innerHTML += row;
+          });
+        } else {
+          reportOutput.textContent = 'Tidak ada pembayaran dalam periode ini.';
+          reportOutput.classList.remove('hidden');
+        }
+      }
     });
 
     $('#btn-share-wa').addEventListener('click', () => {
@@ -758,7 +779,18 @@ Status: ${newStatus.toUpperCase()}
       doc.setFontSize(12);
       const start = $('#rep-start').value;
       const end = $('#rep-end').value;
-      doc.text($('#report-output').textContent, 14, 35, { maxWidth: 180 });
+      doc.text(`Periode: ${start} s/d ${end}`, 14, 28);
+      
+      if ($('#rep-customer').value) {
+        doc.autoTable({
+          startY: 40,
+          head: [['Tanggal', 'Nominal', 'Bunga Dibayar', 'Pokok Dibayar', 'Sisa Pokok', 'Catatan']],
+          body: Array.from($('#report-body').rows).map(row => Array.from(row.cells).map(cell => cell.textContent))
+        });
+      } else {
+        doc.text($('#report-output').textContent, 14, 35, { maxWidth: 180 });
+      }
+
       doc.save("Laporan-Piutang.pdf");
     });
 
